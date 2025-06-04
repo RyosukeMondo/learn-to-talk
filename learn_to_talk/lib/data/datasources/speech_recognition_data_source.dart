@@ -1,13 +1,10 @@
 import 'dart:async';
-import 'dart:io';
-import 'dart:typed_data';
 
-import 'package:flutter_sound/flutter_sound.dart';
-import 'package:google_speech/google_speech.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:speech_to_text/speech_recognition_result.dart' as stt_result;
 import 'package:permission_handler/permission_handler.dart';
 
-// Define a custom class to match the old SpeechRecognitionResult interface
+/// Represents a speech recognition result
 class RecognitionResult {
   final String recognizedWords;
   final bool finalResult;
@@ -18,18 +15,21 @@ class RecognitionResult {
     required this.finalResult,
     this.confidence = 0.0,
   });
+
+  /// Factory to create from speech_to_text result
+  factory RecognitionResult.fromSpeechResult(stt_result.SpeechRecognitionResult result) {
+    return RecognitionResult(
+      recognizedWords: result.recognizedWords,
+      finalResult: result.finalResult,
+      confidence: result.confidence,
+    );
+  }
 }
 
 class SpeechRecognitionDataSource {
-  final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
-  late SpeechToText _speechToText;
+  final stt.SpeechToText _speech = stt.SpeechToText();
   bool _speechEnabled = false;
   bool _isListening = false;
-  StreamSubscription? _audioStreamSubscription;
-  StreamSubscription? _recorderSubscription;
-  String? _recordingPath;
-  final StreamController<Uint8List> _audioStreamController = StreamController<Uint8List>();
-  Stream<List<int>> get audioStream => _audioStreamController.stream.map((data) => data.toList());
   
   // Stream controllers for handling speech events
   final _recognitionResultsController = StreamController<RecognitionResult>.broadcast();
@@ -49,10 +49,20 @@ class SpeechRecognitionDataSource {
         throw Exception('Microphone permission not granted');
       }
       
-      // Initialize the recorder
-      await _recorder.openRecorder();
-      _speechEnabled = true;
-      print('Speech recognition initialized successfully');
+      // Initialize speech to text
+      _speechEnabled = await _speech.initialize(
+        onStatus: (status) {
+          final isListening = status == 'listening';
+          _isListening = isListening;
+          _listeningStatusController.add(isListening);
+        },
+        onError: (errorNotification) {
+          _recognitionErrorController.add(errorNotification.errorMsg);
+          print('Speech error: ${errorNotification.errorMsg}');
+        },
+      );
+      
+      print('Speech recognition initialized successfully: $_speechEnabled');
     } catch (e) {
       _speechEnabled = false;
       print('Failed to initialize speech recognition: $e');
@@ -65,109 +75,74 @@ class SpeechRecognitionDataSource {
       await initialize();
     }
     
-    // Google Speech API supports these major languages
-    // This is a simplified list - in a real app, you might fetch this from a config file
-    return [
-      'en-US',  // English (US)
-      'en-GB',  // English (UK)
-      'es-ES',  // Spanish
-      'fr-FR',  // French
-      'de-DE',  // German
-      'it-IT',  // Italian
-      'pt-BR',  // Portuguese (Brazil)
-      'ru-RU',  // Russian
-      'zh-CN',  // Chinese (Simplified)
-      'ja-JP',  // Japanese
-      'ko-KR',  // Korean
-    ];
+    // Get available locales from speech_to_text
+    final locales = await _speech.locales();
+    
+    // Convert to language codes
+    return locales.map((locale) => locale.localeId).toList();
   }
 
   Future<bool> startListening(String languageCode) async {
     if (!_speechEnabled) {
+      print('Speech not enabled, initializing first');
       await initialize();
+      if (!_speechEnabled) {
+        print('Speech recognition initialization failed');
+        _recognitionErrorController.add("Speech recognition not initialized");
+        return false;
+      }
     }
     
     if (_isListening) {
+      print('Already listening, stopping first');
       await stopListening();
     }
     
     try {
-      // Initialize SpeechToText with the selected language
-      _speechToText = SpeechToText.viaServiceAccount(
-        ServiceAccount.fromString(
-          // In a real app, this would be stored securely or fetched from server
-          // For demo purposes, we'll just use a placeholder
-          r'''{"type":"service_account","project_id":"your-project-id"}''',
-        ),
+      print('Starting listening in language: $languageCode');
+      
+      // Check if language is available
+      final locales = await _speech.locales();
+      final bool isLanguageSupported = locales.any(
+        (locale) => locale.localeId.toLowerCase() == languageCode.toLowerCase() ||
+                    locale.localeId.split('_')[0].toLowerCase() == languageCode.replaceAll('-', '_').split('_')[0].toLowerCase()
       );
       
-      // Configure recognition
-      final config = RecognitionConfig(
-        encoding: AudioEncoding.LINEAR16,
-        model: RecognitionModel.basic,
-        enableAutomaticPunctuation: true,
-        sampleRateHertz: 16000,
-        languageCode: languageCode,
+      if (!isLanguageSupported) {
+        print('Warning: Language $languageCode might not be supported by the device');
+        // Continue anyway as some devices don't properly report all supported languages
+      } else {
+        print('Language $languageCode is supported by the device');
+      }
+      
+      // Start listening with language - with null safety handling
+      final result = await _speech.listen(
+        onResult: (result) {
+          // Convert speech_to_text result to our RecognitionResult format
+          final recognitionResult = RecognitionResult.fromSpeechResult(result);
+          _recognitionResultsController.add(recognitionResult);
+        },
+        localeId: languageCode,
+        listenMode: stt.ListenMode.confirmation,
+        cancelOnError: true,
+        partialResults: true,
       );
       
-      // Create temp file for recording
-      final tempDir = await getTemporaryDirectory();
-      _recordingPath = '${tempDir.path}/audio_recording.pcm';
+      // Handle null return value (happens with some languages like Korean)
+      if (result == null) {
+        print('Speech.listen() returned null, assuming success for language: $languageCode');
+        // For languages like Korean where listen() returns null, we'll assume listening started successfully
+        // but monitor status via the status handler
+        _isListening = true;
+      } else {
+        _isListening = result;
+        print('Started listening with result: $_isListening');
+      }
       
-      // Start recording
-      await _recorder.startRecorder(
-        toFile: _recordingPath,
-        codec: Codec.pcm16,
-        sampleRate: 16000,
-      );
-      
-      // Set up recording stream
-      _recorderSubscription = _recorder.onProgress!.listen((event) {
-        if (event.duration.inMilliseconds > 100) {
-          // Process recorded audio in chunks
-          final file = File(_recordingPath!);
-          if (file.existsSync()) {
-            try {
-              final bytes = file.readAsBytesSync();
-              _audioStreamController.add(bytes);
-            } catch (e) {
-              print('Error reading recording file: $e');
-            }
-          }
-        }
-      });
-      
-      _isListening = true;
-      _listeningStatusController.add(true);
-      
-      // Process the audio stream with Google Speech API
-      final responseStream = _speechToText.streamingRecognize(
-        StreamingRecognitionConfig(config: config, interimResults: true),
-        audioStream,
-      );
-      
-      // Listen to recognition results
-      _audioStreamSubscription = responseStream.listen((data) {
-        if (data.results.isNotEmpty) {
-          final result = data.results.first;
-          if (result.alternatives.isNotEmpty) {
-            final text = result.alternatives.first.transcript;
-            final confidence = result.alternatives.first.confidence;
-            
-            _recognitionResultsController.add(RecognitionResult(
-              recognizedWords: text,
-              finalResult: result.isFinal,
-              confidence: confidence,
-            ));
-          }
-        }
-      }, onError: (error) {
-        _recognitionErrorController.add("Recognition error: $error");
-        stopListening();
-      });
-      
-      return true;
+      _listeningStatusController.add(_isListening);
+      return _isListening;
     } catch (e) {
+      print("Failed to start listening: $e");
       _recognitionErrorController.add("Failed to start listening: $e");
       _isListening = false;
       _listeningStatusController.add(false);
@@ -179,33 +154,12 @@ class SpeechRecognitionDataSource {
     if (!_isListening) return;
     
     try {
-      if (_recorder.isRecording) {
-        await _recorder.stopRecorder();
-      }
-      
-      if (_recorderSubscription != null) {
-        await _recorderSubscription!.cancel();
-        _recorderSubscription = null;
-      }
-      
-      if (_audioStreamSubscription != null) {
-        await _audioStreamSubscription!.cancel();
-        _audioStreamSubscription = null;
-      }
-      
-      // Clean up temporary file
-      if (_recordingPath != null) {
-        final file = File(_recordingPath!);
-        if (file.existsSync()) {
-          await file.delete();
-        }
-        _recordingPath = null;
-      }
-    } catch (e) {
-      _recognitionErrorController.add("Error stopping listening: $e");
-    } finally {
+      await _speech.stop();
       _isListening = false;
       _listeningStatusController.add(false);
+    } catch (e) {
+      print('Error stopping listening: $e');
+      _recognitionErrorController.add("Error stopping listening: $e");
     }
   }
 
@@ -214,18 +168,18 @@ class SpeechRecognitionDataSource {
   }
 
   Future<void> dispose() async {
-    if (_isListening) {
-      await stopListening();
+    await stopListening();
+    
+    if (!_recognitionResultsController.isClosed) {
+      await _recognitionResultsController.close();
     }
     
-    if (_recorder.isRecording) {
-      await _recorder.stopRecorder();
+    if (!_recognitionErrorController.isClosed) {
+      await _recognitionErrorController.close();
     }
     
-    await _recorder.closeRecorder();
-    await _audioStreamController.close();
-    await _recognitionResultsController.close();
-    await _recognitionErrorController.close();
-    await _listeningStatusController.close();
+    if (!_listeningStatusController.isClosed) {
+      await _listeningStatusController.close();
+    }
   }
 }

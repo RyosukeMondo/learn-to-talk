@@ -15,6 +15,15 @@ allprojects {
         mavenCentral()
     }
     
+    // Force all dependencies to use our Kotlin version
+    configurations.all {
+        resolutionStrategy.eachDependency {
+            if (requested.group == "org.jetbrains.kotlin") {
+                useVersion("1.9.22")
+            }
+        }
+    }
+    
     // Add compatibility settings for ML Kit packages and plugins
     plugins.withId("com.android.library") {
         val android = extensions.getByName("android") as com.android.build.gradle.LibraryExtension

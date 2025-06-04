@@ -22,13 +22,42 @@ class TTSRepositoryAdapter implements TTSRepository {
 
   @override
   Future<List<Language>> getTTSLanguages() async {
-    // Convert language strings to Language objects
-    final languageCodes = await _textToSpeechRepository.getAvailableLanguages();
-    return languageCodes.map((code) => Language(
-      code: code,
-      name: _getLanguageNameFromCode(code),
-      isOfflineAvailable: false, // Default to false, can be updated later
-    )).toList();
+    try {
+      print('TTSRepositoryAdapter: Getting available languages...');
+      // Convert language strings to Language objects
+      final languageCodes = await _textToSpeechRepository.getAvailableLanguages();
+      print('TTSRepositoryAdapter: Received ${languageCodes.length} language codes');
+      
+      if (languageCodes.isEmpty) {
+        print('TTSRepositoryAdapter: No languages received, adding fallback languages');
+        // Provide fallback languages to ensure the app works
+        return [
+          Language(code: 'en-US', name: 'English (US)', isOfflineAvailable: true),
+          Language(code: 'ja-JP', name: 'Japanese', isOfflineAvailable: true),
+          Language(code: 'fr-FR', name: 'French', isOfflineAvailable: true),
+          Language(code: 'de-DE', name: 'German', isOfflineAvailable: true),
+          Language(code: 'es-ES', name: 'Spanish', isOfflineAvailable: true),
+        ];
+      }
+      
+      final result = languageCodes.map((code) => Language(
+        code: code,
+        name: _getLanguageNameFromCode(code),
+        isOfflineAvailable: false, // Default to false, can be updated later
+      )).toList();
+      
+      print('TTSRepositoryAdapter: Converted ${result.length} languages');
+      result.forEach((lang) => print('TTSRepositoryAdapter: Language ${lang.name} (${lang.code})'));
+      return result;
+    } catch (e) {
+      print('TTSRepositoryAdapter: Error getting languages: $e');
+      // Return fallback languages on error
+      return [
+        Language(code: 'en-US', name: 'English (US)', isOfflineAvailable: true),
+        Language(code: 'ja-JP', name: 'Japanese', isOfflineAvailable: true),
+        Language(code: 'fr-FR', name: 'French', isOfflineAvailable: true),
+      ];
+    }
   }
 
   @override
@@ -43,10 +72,41 @@ class TTSRepositoryAdapter implements TTSRepository {
     return false; // Default implementation
   }
 
+  /// Convert language code to format expected by TTS service
+  String _formatTTSLanguageCode(String languageCode) {
+    print('TTSRepositoryAdapter: Formatting TTS language code: $languageCode');
+    // If code already has format like en-US, keep it
+    if (languageCode.contains('-')) {
+      return languageCode;
+    }
+    
+    // If code has underscores, replace with hyphens
+    if (languageCode.contains('_')) {
+      return languageCode.replaceAll('_', '-');
+    }
+    
+    // Handle special cases where we have full names
+    switch (languageCode) {
+      case 'English (US)': return 'en-US';
+      case 'Japanese': return 'ja-JP';
+      case 'French': return 'fr-FR';
+      case 'German': return 'de-DE';
+      case 'Spanish': return 'es-ES';
+      case 'Chinese (Simplified)': return 'zh-CN';
+    }
+    
+    // For short codes, return as is as we don't have enough info to expand
+    return languageCode;
+  }
+
   @override
   Future<void> speak(String text, String languageCode) async {
+    // Format the language code for TTS service
+    final formattedCode = _formatTTSLanguageCode(languageCode);
+    print('TTSRepositoryAdapter: Speaking with language code: $languageCode -> $formattedCode');
+    
     // First set the language, then speak
-    await _textToSpeechRepository.setLanguage(languageCode);
+    await _textToSpeechRepository.setLanguage(formattedCode);
     await _textToSpeechRepository.speak(text);
   }
 

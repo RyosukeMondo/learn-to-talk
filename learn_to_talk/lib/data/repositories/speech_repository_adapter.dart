@@ -30,13 +30,42 @@ class SpeechRepositoryAdapter implements SpeechRepository {
 
   @override
   Future<List<Language>> getSpeechRecognitionLanguages() async {
-    // Convert language strings to Language objects
-    final languageCodes = await _speechRecognitionRepository.getAvailableLanguages();
-    return languageCodes.map((code) => Language(
-      code: code,
-      name: _getLanguageNameFromCode(code),
-      isOfflineAvailable: false, // Default to false, can be updated later
-    )).toList();
+    try {
+      print('SpeechRepositoryAdapter: Getting available languages...');
+      // Convert language strings to Language objects
+      final languageCodes = await _speechRecognitionRepository.getAvailableLanguages();
+      print('SpeechRepositoryAdapter: Received ${languageCodes.length} language codes');
+      
+      if (languageCodes.isEmpty) {
+        print('SpeechRepositoryAdapter: No languages received, adding fallback languages');
+        // Provide fallback languages to ensure the app works
+        return [
+          Language(code: 'en-US', name: 'English (US)', isOfflineAvailable: true),
+          Language(code: 'ja-JP', name: 'Japanese', isOfflineAvailable: true),
+          Language(code: 'fr-FR', name: 'French', isOfflineAvailable: true),
+          Language(code: 'de-DE', name: 'German', isOfflineAvailable: true),
+          Language(code: 'es-ES', name: 'Spanish', isOfflineAvailable: true),
+        ];
+      }
+      
+      final result = languageCodes.map((code) => Language(
+        code: code,
+        name: _getLanguageNameFromCode(code),
+        isOfflineAvailable: false, // Default to false, can be updated later
+      )).toList();
+      
+      print('SpeechRepositoryAdapter: Converted ${result.length} languages');
+      result.forEach((lang) => print('SpeechRepositoryAdapter: Language ${lang.name} (${lang.code})'));
+      return result;
+    } catch (e) {
+      print('SpeechRepositoryAdapter: Error getting languages: $e');
+      // Return fallback languages on error
+      return [
+        Language(code: 'en-US', name: 'English (US)', isOfflineAvailable: true),
+        Language(code: 'ja-JP', name: 'Japanese', isOfflineAvailable: true),
+        Language(code: 'fr-FR', name: 'French', isOfflineAvailable: true),
+      ];
+    }
   }
 
   @override
@@ -45,9 +74,62 @@ class SpeechRepositoryAdapter implements SpeechRepository {
     return false; // Default implementation
   }
 
+  /// Convert language code to format expected by speech recognition service
+  String _formatSpeechLanguageCode(String languageCode) {
+    print('SpeechRepositoryAdapter: Formatting speech language code: $languageCode');
+    // If code already has format like en_US with underscore (which speech recognition expects), keep it
+    if (languageCode.contains('_')) {
+      return languageCode;
+    }
+    
+    // If code has hyphens, replace with underscores
+    if (languageCode.contains('-')) {
+      return languageCode.replaceAll('-', '_');
+    }
+    
+    // Handle special cases where we have full names
+    switch (languageCode) {
+      case 'English (US)': return 'en_US';
+      case 'Japanese': return 'ja_JP';
+      case 'French': return 'fr_FR';
+      case 'German': return 'de_DE';
+      case 'Spanish': return 'es_ES';
+      case 'Chinese (Simplified)': return 'zh_CN';
+      case 'Korean': return 'ko_KR';
+    }
+    
+    // For short codes, use default locale if available
+    switch (languageCode) {
+      case 'en': return 'en_US';
+      case 'ja': return 'ja_JP';
+      case 'fr': return 'fr_FR';
+      case 'de': return 'de_DE';
+      case 'es': return 'es_ES';
+      case 'zh': return 'zh_CN';
+      case 'ko': return 'ko_KR';
+    }
+    
+    return languageCode;
+  }
+
   @override
   Future<void> startRecognition(String languageCode) async {
-    await _speechRecognitionRepository.startListening(languageCode);
+    // Format the language code for speech recognition service
+    final formattedCode = _formatSpeechLanguageCode(languageCode);
+    print('SpeechRepositoryAdapter: Starting recognition with language code: $languageCode -> $formattedCode');
+    
+    try {
+      final success = await _speechRecognitionRepository.startListening(formattedCode);
+      print('SpeechRepositoryAdapter: Speech recognition started: $success');
+      
+      // If recognition wasn't successful, emit an error
+      if (success == false) {
+        _recognitionErrorsController.add('Failed to start speech recognition for $formattedCode');
+      }
+    } catch (e) {
+      print('SpeechRepositoryAdapter: Error starting recognition: $e');
+      _recognitionErrorsController.add('Error starting speech recognition: $e');
+    }
   }
 
   @override
@@ -76,6 +158,7 @@ class SpeechRepositoryAdapter implements SpeechRepository {
       'de-DE': 'German',
       'es-ES': 'Spanish',
       'zh-CN': 'Chinese (Simplified)',
+      'ko-KR': 'Korean',
       // Add more languages as needed
     };
     

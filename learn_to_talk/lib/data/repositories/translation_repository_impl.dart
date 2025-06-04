@@ -38,9 +38,44 @@ class TranslationRepositoryImpl implements TranslationRepository {
     return _translationDataSource.deleteModel(sourceLanguageCode, targetLanguageCode);
   }
 
+  /// Convert language code to format expected by translation service (usually short codes like 'en', 'fr')
+  String _formatTranslationLanguageCode(String languageCode) {
+    print('TranslationRepositoryImpl: Formatting translation language code: $languageCode');
+    
+    // If it's already a short code, keep it
+    if (languageCode.length <= 2) {
+      return languageCode;
+    }
+    
+    // Extract base language code (e.g., 'en' from 'en-US' or 'en_US')
+    if (languageCode.contains('-') || languageCode.contains('_')) {
+      final baseCode = languageCode.split(RegExp(r'[-_]'))[0].toLowerCase();
+      print('TranslationRepositoryImpl: Extracted base code: $baseCode from $languageCode');
+      return baseCode;
+    }
+    
+    // Handle special cases where we have full names
+    switch (languageCode) {
+      case 'English': case 'English (US)': return 'en';
+      case 'Japanese': return 'ja';
+      case 'French': return 'fr';
+      case 'German': return 'de';
+      case 'Spanish': return 'es';
+      case 'Chinese': case 'Chinese (Simplified)': return 'zh';
+    }
+    
+    print('TranslationRepositoryImpl: Using code as-is: $languageCode');
+    return languageCode;
+  }
+
   @override
   Future<String> translateText(String text, String sourceLanguageCode, String targetLanguageCode) {
-    return _translationDataSource.translate(text, sourceLanguageCode, targetLanguageCode);
+    // Format the language codes for translation service
+    final formattedSource = _formatTranslationLanguageCode(sourceLanguageCode);
+    final formattedTarget = _formatTranslationLanguageCode(targetLanguageCode);
+    print('TranslationRepositoryImpl: Translating with codes: $sourceLanguageCode -> $formattedSource, $targetLanguageCode -> $formattedTarget');
+    
+    return _translationDataSource.translate(text, formattedSource, formattedTarget);
   }
 
   @override

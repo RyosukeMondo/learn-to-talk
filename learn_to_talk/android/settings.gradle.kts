@@ -14,6 +14,17 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
+    
+    // Force Kotlin version for all plugins to solve speech_to_text compatibility issue
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == "org.jetbrains.kotlin.android" ||
+                requested.id.id == "org.jetbrains.kotlin.jvm" ||
+                requested.id.namespace == "org.jetbrains.kotlin") {
+                useVersion("1.9.22")
+            }
+        }
+    }
 }
 
 plugins {

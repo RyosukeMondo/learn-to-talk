@@ -18,9 +18,9 @@ dependencies:
   
   # UI components
   flutter_tts: ^3.8.5
-  # Replacing speech_to_text with more compatible alternatives
-  google_speech: ^2.2.0  # More compatible with newer Flutter versions
-  # Using flutter_sound for audio processing instead of sound_stream which has compatibility issues
+  # Simple on-device speech recognition that works without cloud credentials
+  speech_to_text: ^7.0.0
+  # Audio processing
   flutter_sound: ^9.2.13
   permission_handler: ^11.0.1
   path_provider: ^2.1.1
@@ -58,9 +58,8 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/animations/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

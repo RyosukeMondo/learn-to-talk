@@ -27,15 +27,23 @@ class LanguageBloc extends Bloc<LanguageEvent, LanguageState> {
     Emitter<LanguageState> emit,
   ) async {
     try {
+      print('LanguageBloc: Loading languages...');
       emit(state.copyWith(status: LanguageStatus.loading));
       
       final languages = await _getLanguagesUseCase.execute();
+      print('LanguageBloc: Loaded languages count: ${languages.length}');
+      if (languages.isNotEmpty) {
+        languages.forEach((lang) => print('LanguageBloc: Language: ${lang.name} (${lang.code})'));
+      } else {
+        print('LanguageBloc: No languages were loaded!');
+      }
       
       emit(state.copyWith(
         status: LanguageStatus.loaded,
         availableLanguages: languages,
       ));
     } catch (e) {
+      print('LanguageBloc: Error loading languages: ${e.toString()}');
       emit(state.copyWith(
         status: LanguageStatus.error,
         errorMessage: 'Failed to load languages: ${e.toString()}',
