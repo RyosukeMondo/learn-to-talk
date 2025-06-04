@@ -127,6 +127,7 @@ class _HomePageState extends State<HomePage> {
             onPressed: () => _navigateToCreatePractice(context, state),
             tooltip: 'Create Practice Item',
             child: const Icon(Icons.add),
+            heroTag: 'home_page_fab',
           ),
         );
       },

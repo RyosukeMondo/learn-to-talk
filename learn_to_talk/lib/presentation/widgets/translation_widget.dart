@@ -74,19 +74,22 @@ class _TranslationWidgetState extends State<TranslationWidget> {
         }
       },
       builder: (context, state) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSourceTextInput(context, state),
-            const SizedBox(height: 16),
-            _buildTranslationArea(context, state),
-            const SizedBox(height: 16),
-            _buildActionButtons(context, state),
-            if (state.errorMessage != null) ...[
-              const SizedBox(height: 8),
-              _buildErrorMessage(state),
+        return SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSourceTextInput(context, state),
+              const SizedBox(height: 16),
+              _buildTranslationArea(context, state),
+              const SizedBox(height: 16),
+              _buildActionButtons(context, state),
+              if (state.errorMessage != null) ...[
+                const SizedBox(height: 8),
+                _buildErrorMessage(state),
+              ],
+              const SizedBox(height: 16),
             ],
-          ],
+          ),
         );
       },
     );

@@ -136,17 +136,19 @@ class _PracticeSessionPageState extends State<PracticeSessionPage> {
 
           return Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildProgressIndicator(),
-                const SizedBox(height: 24),
-                _buildPracticeCard(context),
-                const SizedBox(height: 24),
-                Expanded(
-                  child: _buildSpeechRecognition(context),
-                ),
-              ],
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildProgressIndicator(),
+                  const SizedBox(height: 24),
+                  _buildPracticeCard(context),
+                  const SizedBox(height: 24),
+                  _buildSpeechRecognition(context),
+                  // Added bottom padding to ensure content isn't cut off
+                  const SizedBox(height: 24),
+                ],
+              ),
             ),
           );
         },

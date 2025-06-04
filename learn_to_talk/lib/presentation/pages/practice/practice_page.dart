@@ -92,6 +92,7 @@ class _PracticePageState extends State<PracticePage> {
         onPressed: () => _navigateToCreatePractice(context),
         icon: const Icon(Icons.add),
         label: const Text('Add Practice'),
+        heroTag: 'practice_page_fab',
       ),
     );
   }
