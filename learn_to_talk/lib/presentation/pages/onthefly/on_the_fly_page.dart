@@ -2,12 +2,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:learn_to_talk/core/features/stt/speech_recognition_widget.dart';
-import 'package:learn_to_talk/core/features/tts/text_to_speech_widget.dart';
 import 'package:learn_to_talk/presentation/blocs/language/language_bloc.dart';
 import 'package:learn_to_talk/presentation/blocs/language/language_state.dart';
 import 'package:learn_to_talk/presentation/blocs/translation/translation_bloc.dart';
 import 'package:learn_to_talk/presentation/blocs/translation/translation_event.dart';
 import 'package:audioplayers/audioplayers.dart';
+
+// Import our widget components
+import 'package:learn_to_talk/presentation/pages/onthefly/widgets/instructions_widget.dart';
+import 'package:learn_to_talk/presentation/pages/onthefly/widgets/source_recognition_widget.dart';
+import 'package:learn_to_talk/presentation/pages/onthefly/widgets/translation_widget.dart';
+import 'package:learn_to_talk/presentation/pages/onthefly/widgets/pronunciation_check_widget.dart';
+import 'package:learn_to_talk/presentation/pages/onthefly/widgets/pronunciation_feedback_widget.dart';
 
 class OnTheFlyPage extends StatefulWidget {
   // Initial language codes that will be updated from LanguageBloc
@@ -151,308 +157,105 @@ class _OnTheFlyPageState extends State<OnTheFlyPage> {
       listener: (context, state) {
         _updateLanguageCodes(state);
       },
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Align(
-                alignment: Alignment.topRight,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  child: ElevatedButton.icon(
-                    onPressed: _resetState,
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Reset'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red[100],
-                      foregroundColor: Colors.red[800],
-                    ),
-                  ),
-                ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Reset button - compact and positioned at top right
+          Align(
+            alignment: Alignment.topRight,
+            child: TextButton.icon(
+              onPressed: _resetState,
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Reset'),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: const Size(60, 30),
+                foregroundColor: Colors.red[800],
               ),
-              if (!_isCheckingPronunciation) _buildInstructions(),
-              const SizedBox(height: 24),
-              _isCheckingPronunciation
-                  ? _buildPronunciationCheck()
-                  : _buildSourceRecognition(),
-              const SizedBox(height: 24),
-              if (_showTranslation &&
-                  _translatedText != null &&
-                  !_isCheckingPronunciation)
-                _buildTranslation(),
-              if (_pronunciationChecked) _buildPronunciationFeedback(),
-            ],
+            ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInstructions() {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'On-the-Fly Practice',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _isCheckingPronunciation
-                  ? 'Listen to the translation and try to mimic it. Press the microphone button and speak.'
-                  : 'Press the microphone button and speak in your mother language. The app will translate it for you to practice.',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSourceRecognition() {
-    return Card(
-      elevation: 3,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Text(
-              'Speak in your language',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 16),
-            SpeechRecognitionWidget(
-              languageCode: _sourceLanguageCode,
-              onRecognized: (text) {
-                if (!mounted) return; // Guard against setState after dispose
-                setState(() {
-                  _sourceText = text;
-                });
-                // Move the translation out of setState to avoid nested async calls
-                _translateText(text);
-              },
-            ),
-            if (_sourceText != null && _sourceText!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 16.0),
-                child: Text(
-                  _sourceText!,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTranslation() {
-    return Card(
-      elevation: 3,
-      color: Colors.blue.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Text('Translation', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 16),
-            Text(
-              _translatedText!,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 16,
-              runSpacing: 16,
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextToSpeechWidget(
-                    text: _translatedText!,
-                    languageCode: _targetLanguageCode,
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _isCheckingPronunciation = true;
-                      _pronunciationChecked = false;
-                    });
-                  },
-                  child: const Text('Practice Speaking'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPronunciationCheck() {
-    return Card(
-      elevation: 3,
-      color: Colors.blue.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Text(
-              'Try to pronounce this in $_targetLanguageCode',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(color: Colors.blue.shade900),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _translatedText ?? '',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            TextToSpeechWidget(
-              text: _translatedText ?? '',
-              languageCode: _targetLanguageCode,
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Now try to say it:',
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: 16),
-            SpeechRecognitionWidget(
-              languageCode: _targetLanguageCode,
-              onRecognized: (text) {
-                if (!mounted) return;
-                setState(() {
-                  _userAttemptText = text;
-                  _pronunciationChecked = false;
-                });
-                _checkPronunciation();
-              },
-            ),
-            if (_userAttemptText != null && _userAttemptText!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 16.0),
-                child: Text(
-                  'You said: $_userAttemptText',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontStyle: FontStyle.italic,
-                  ),
+          
+          // Main content area with reduced padding
+          Expanded(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Only show instructions if not checking pronunciation
+                    if (!_isCheckingPronunciation) 
+                      InstructionsWidget(
+                        isCheckingPronunciation: _isCheckingPronunciation,
+                      ),
+                    
+                    const SizedBox(height: 8),
+                    
+                    // Either show pronunciation check or source recognition based on state
+                    _isCheckingPronunciation
+                        ? PronunciationCheckWidget(
+                            translatedText: _translatedText ?? '',
+                            targetLanguageCode: _targetLanguageCode,
+                            userAttemptText: _userAttemptText,
+                            onRecognized: (text) {
+                              if (!mounted) return;
+                              setState(() {
+                                _userAttemptText = text;
+                                _pronunciationChecked = false;
+                              });
+                              _checkPronunciation();
+                            },
+                            onBackPressed: () {
+                              setState(() {
+                                _isCheckingPronunciation = false;
+                                _pronunciationChecked = false;
+                              });
+                            },
+                          )
+                        : SourceRecognitionWidget(
+                            languageCode: _sourceLanguageCode,
+                            sourceText: _sourceText,
+                            onRecognized: (text) {
+                              if (!mounted) return;
+                              setState(() {
+                                _sourceText = text;
+                              });
+                              _translateText(text);
+                            },
+                          ),
+                    
+                    const SizedBox(height: 8),
+                    
+                    // Show translation if available and not checking pronunciation
+                    if (_showTranslation &&
+                        _translatedText != null &&
+                        !_isCheckingPronunciation)
+                      TranslationWidget(
+                        translatedText: _translatedText!,
+                        targetLanguageCode: _targetLanguageCode,
+                        onPracticePressed: () {
+                          setState(() {
+                            _isCheckingPronunciation = true;
+                            _pronunciationChecked = false;
+                          });
+                        },
+                      ),
+                    
+                    // Show pronunciation feedback if checked
+                    if (_pronunciationChecked)
+                      PronunciationFeedbackWidget(
+                        pronunciationMatched: _pronunciationMatched,
+                        userAttemptText: _userAttemptText,
+                        userAttemptTranslation: _userAttemptTranslation,
+                        targetLanguageCode: _targetLanguageCode,
+                        loadingReverseTranslation: _loadingReverseTranslation,
+                      ),
+                  ],
                 ),
               ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _isCheckingPronunciation = false;
-                  _pronunciationChecked = false;
-                });
-              },
-              child: const Text('Back to Translation'),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPronunciationFeedback() {
-    return Card(
-      elevation: 3,
-      color:
-          _pronunciationMatched
-              ? Colors.green.shade100
-              : Colors.orange.shade100,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Icon(
-              _pronunciationMatched
-                  ? Icons.check_circle
-                  : Icons.record_voice_over,
-              size: 48,
-              color: _pronunciationMatched ? Colors.green : Colors.orange,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _pronunciationMatched
-                  ? 'Great job! Your pronunciation matched.'
-                  : 'Let\'s try again. Listen to your pronunciation:',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-                color:
-                    _pronunciationMatched
-                        ? Colors.green.shade800
-                        : Colors.orange.shade800,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            if (!_pronunciationMatched && _userAttemptText != null) ...[
-              // What you said
-              Padding(
-                padding: const EdgeInsets.only(top: 16.0),
-                child: Text(
-                  'You said: $_userAttemptText',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.orange.shade800,
-                  ),
-                ),
-              ),
-
-              // Listen to your pronunciation
-              Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: TextToSpeechWidget(
-                  text: _userAttemptText!,
-                  languageCode: _targetLanguageCode,
-                ),
-              ),
-
-              // Translation back to source language
-              if (_userAttemptTranslation != null) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  child: Text(
-                    'In your language: $_userAttemptTranslation',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.blue.shade800,
-                    ),
-                  ),
-                ),
-              ],
-
-              if (_loadingReverseTranslation)
-                Padding(
-                  padding: const EdgeInsets.only(top: 16.0),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-            ],
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -536,6 +339,5 @@ class _OnTheFlyPageState extends State<OnTheFlyPage> {
         targetLanguageCode: _sourceLanguageCode,
       ),
     );
-    // No need to create a new listener here - using the one in _setupTranslationListener
   }
 }
