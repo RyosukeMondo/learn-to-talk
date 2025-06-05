@@ -126,8 +126,8 @@ class _HomePageState extends State<HomePage> {
           floatingActionButton: FloatingActionButton(
             onPressed: () => _navigateToCreatePractice(context, state),
             tooltip: 'Create Practice Item',
-            child: const Icon(Icons.add),
             heroTag: 'home_page_fab',
+            child: const Icon(Icons.add),
           ),
         );
       },

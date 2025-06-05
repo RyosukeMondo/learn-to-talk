@@ -154,10 +154,7 @@ class _PracticePageState extends State<PracticePage> {
               final practice = practices[index];
               return PracticeItemWidget(
                 practice: practice,
-                onPracticeSelected: (practice) => _navigateToPracticeSession(
-                  context, 
-                  [practice]
-                ),
+                onPracticeSelected: (practice) => _initiatePracticeSessionAndNavigate(context, [practice]),
               );
             },
           ),
@@ -186,41 +183,55 @@ class _PracticePageState extends State<PracticePage> {
     );
   }
 
+  /// Start a practice session with the given practices
+  /// This method handles the async flow properly by capturing context references
+  /// before any async operation to avoid BuildContext across async gap warnings
   void _startPracticeSession(BuildContext context, List<Practice> practices) {
+    _initiatePracticeSessionAndNavigate(context, practices);
+  }
+  
+  /// Private helper to initiate a practice session and navigate
+  /// Extracted to follow DRY principle and improve maintainability
+  void _initiatePracticeSessionAndNavigate(BuildContext context, List<Practice> practices) {
     final practiceBloc = context.read<PracticeBloc>();
     practiceBloc.add(StartPracticeSession(
       sourceLanguageCode: widget.sourceLanguageCode,
       targetLanguageCode: widget.targetLanguageCode,
     ));
     
+    // Store context reference before async gap
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    
     // Wait for the session to be created then navigate
     practiceBloc.stream.firstWhere(
       (state) => state.currentSessionId != null,
-    ).then(
-      (state) => _navigateToPracticeSession(context, practices),
-    );
+    ).then((state) {
+      if (!mounted) return;
+      
+      final sessionId = state.currentSessionId;
+      if (sessionId == null) {
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(content: Text('Could not start practice session')),
+        );
+        return;
+      }
+      
+      // Navigate to practice session screen
+      navigator.push(
+        MaterialPageRoute(
+          builder: (context) => PracticeSessionPage(
+            sessionId: sessionId,
+            practices: practices,
+            sourceLanguageCode: widget.sourceLanguageCode,
+            targetLanguageCode: widget.targetLanguageCode,
+          ),
+        ),
+      );
+    });
   }
 
-  void _navigateToPracticeSession(BuildContext context, List<Practice> practices) {
-    final state = context.read<PracticeBloc>().state;
-    if (state.currentSessionId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not start practice session')),
-      );
-      return;
-    }
-    
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => PracticeSessionPage(
-          sessionId: state.currentSessionId!,
-          practices: practices,
-          sourceLanguageCode: widget.sourceLanguageCode,
-          targetLanguageCode: widget.targetLanguageCode,
-        ),
-      ),
-    );
-  }
+
 
   void _navigateToCreatePractice(BuildContext context) {
     // Will implement this in create_practice_page.dart
