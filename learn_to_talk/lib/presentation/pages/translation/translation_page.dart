@@ -7,7 +7,7 @@ import 'package:learn_to_talk/presentation/blocs/language/language_state.dart';
 import 'package:learn_to_talk/presentation/blocs/practice/practice_bloc.dart';
 import 'package:learn_to_talk/presentation/blocs/practice/practice_event.dart';
 import 'package:learn_to_talk/presentation/widgets/language_dropdown.dart';
-import 'package:learn_to_talk/presentation/widgets/translation_widget.dart';
+import 'package:learn_to_talk/core/features/translation/translation_widget.dart';
 
 class TranslationPage extends StatefulWidget {
   const TranslationPage({super.key});

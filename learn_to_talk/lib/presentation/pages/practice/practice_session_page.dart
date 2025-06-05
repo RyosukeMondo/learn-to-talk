@@ -6,8 +6,8 @@ import 'package:learn_to_talk/presentation/blocs/practice/practice_event.dart';
 import 'package:learn_to_talk/presentation/blocs/practice/practice_state.dart';
 import 'package:learn_to_talk/presentation/blocs/speech/speech_bloc.dart';
 import 'package:learn_to_talk/presentation/blocs/speech/speech_event.dart';
-import 'package:learn_to_talk/presentation/widgets/speech_recognition_widget.dart';
-import 'package:learn_to_talk/presentation/widgets/text_to_speech_widget.dart';
+import 'package:learn_to_talk/core/features/stt/speech_recognition_widget.dart';
+import 'package:learn_to_talk/core/features/tts/text_to_speech_widget.dart';
 import 'package:lottie/lottie.dart';
 
 class PracticeSessionPage extends StatefulWidget {

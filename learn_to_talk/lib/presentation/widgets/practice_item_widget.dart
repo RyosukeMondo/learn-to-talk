@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:learn_to_talk/domain/entities/practice.dart';
-import 'package:learn_to_talk/presentation/widgets/text_to_speech_widget.dart';
+import 'package:learn_to_talk/core/features/tts/text_to_speech_widget.dart';
 
 class PracticeItemWidget extends StatelessWidget {
   final Practice practice;

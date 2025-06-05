@@ -8,8 +8,7 @@ import 'package:learn_to_talk/presentation/blocs/practice/practice_bloc.dart';
 import 'package:learn_to_talk/presentation/blocs/practice/practice_event.dart';
 import 'package:learn_to_talk/presentation/blocs/practice/practice_state.dart';
 import 'package:learn_to_talk/presentation/widgets/language_dropdown.dart';
-import 'package:learn_to_talk/presentation/widgets/text_to_speech_widget.dart';
-import 'package:learn_to_talk/presentation/widgets/translation_widget.dart';
+import 'package:learn_to_talk/core/features/tts/text_to_speech_widget.dart';
 
 class CreatePracticePage extends StatefulWidget {
   final String? initialSourceLanguageCode;
@@ -27,7 +26,8 @@ class CreatePracticePage extends StatefulWidget {
 
 class _CreatePracticePageState extends State<CreatePracticePage> {
   final TextEditingController _sourceTextController = TextEditingController();
-  final TextEditingController _translatedTextController = TextEditingController();
+  final TextEditingController _translatedTextController =
+      TextEditingController();
   bool _isTranslationUsed = false;
 
   @override
@@ -35,7 +35,7 @@ class _CreatePracticePageState extends State<CreatePracticePage> {
     super.initState();
     // Load languages when the page is created
     context.read<LanguageBloc>().add(const LoadLanguages());
-    
+
     // If initial languages are provided, set them
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final languageBloc = context.read<LanguageBloc>();
@@ -51,7 +51,7 @@ class _CreatePracticePageState extends State<CreatePracticePage> {
           (lang) => lang.code == widget.initialTargetLanguageCode,
           orElse: () => languages.first,
         );
-        
+
         // Select the languages
         languageBloc.add(SelectSourceLanguage(sourceLanguage));
         languageBloc.add(SelectTargetLanguage(targetLanguage));
@@ -69,18 +69,17 @@ class _CreatePracticePageState extends State<CreatePracticePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create Practice Item'),
-      ),
+      appBar: AppBar(title: const Text('Create Practice Item')),
       body: BlocConsumer<PracticeBloc, PracticeState>(
-        listenWhen: (previous, current) =>
-            previous.status != current.status &&
-            current.status == PracticeStatus.success,
+        listenWhen:
+            (previous, current) =>
+                previous.status != current.status &&
+                current.status == PracticeStatus.success,
         listener: (context, state) {
           // If practice creation was successful, navigate back
           if (state.status == PracticeStatus.success) {
             Navigator.of(context).pop();
-            
+
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Practice item created successfully'),
@@ -94,9 +93,7 @@ class _CreatePracticePageState extends State<CreatePracticePage> {
             builder: (context, languageState) {
               if (languageState.status == LanguageStatus.initial ||
                   languageState.status == LanguageStatus.loading) {
-                return const Center(
-                  child: CircularProgressIndicator(),
-                );
+                return const Center(child: CircularProgressIndicator());
               }
 
               if (languageState.status == LanguageStatus.error) {
@@ -111,13 +108,16 @@ class _CreatePracticePageState extends State<CreatePracticePage> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        languageState.errorMessage ?? 'An error occurred loading languages',
+                        languageState.errorMessage ??
+                            'An error occurred loading languages',
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: () {
-                          context.read<LanguageBloc>().add(const LoadLanguages());
+                          context.read<LanguageBloc>().add(
+                            const LoadLanguages(),
+                          );
                         },
                         child: const Text('Retry'),
                       ),
@@ -157,9 +157,7 @@ class _CreatePracticePageState extends State<CreatePracticePage> {
   Widget _buildLanguageSelectors(BuildContext context, LanguageState state) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -167,10 +165,7 @@ class _CreatePracticePageState extends State<CreatePracticePage> {
           children: [
             const Text(
               'Select Languages',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             Row(
@@ -185,7 +180,9 @@ class _CreatePracticePageState extends State<CreatePracticePage> {
                         languages: state.availableLanguages,
                         selectedLanguage: state.sourceLanguage,
                         onLanguageSelected: (Language language) {
-                          context.read<LanguageBloc>().add(SelectSourceLanguage(language));
+                          context.read<LanguageBloc>().add(
+                            SelectSourceLanguage(language),
+                          );
                         },
                         hintText: 'From',
                         isLoading: state.status == LanguageStatus.loading,
@@ -214,7 +211,9 @@ class _CreatePracticePageState extends State<CreatePracticePage> {
                         languages: state.availableLanguages,
                         selectedLanguage: state.targetLanguage,
                         onLanguageSelected: (Language language) {
-                          context.read<LanguageBloc>().add(SelectTargetLanguage(language));
+                          context.read<LanguageBloc>().add(
+                            SelectTargetLanguage(language),
+                          );
                         },
                         hintText: 'To',
                         isLoading: state.status == LanguageStatus.loading,
@@ -233,9 +232,7 @@ class _CreatePracticePageState extends State<CreatePracticePage> {
   Widget _buildSourceTextInput(BuildContext context, LanguageState state) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -243,34 +240,35 @@ class _CreatePracticePageState extends State<CreatePracticePage> {
           children: [
             Text(
               'Text in ${state.sourceLanguage?.name ?? "your language"}:',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _sourceTextController,
               decoration: InputDecoration(
-                hintText: 'Enter text in ${state.sourceLanguage?.name ?? "your language"}',
+                hintText:
+                    'Enter text in ${state.sourceLanguage?.name ?? "your language"}',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
-                suffixIcon: _sourceTextController.text.isNotEmpty && state.sourceLanguage != null
-                    ? IconButton(
-                        icon: const Icon(Icons.volume_up),
-                        onPressed: () {
-                          // We will implement this with TTS widget
-                        },
-                      )
-                    : null,
+                suffixIcon:
+                    _sourceTextController.text.isNotEmpty &&
+                            state.sourceLanguage != null
+                        ? IconButton(
+                          icon: const Icon(Icons.volume_up),
+                          onPressed: () {
+                            // We will implement this with TTS widget
+                          },
+                        )
+                        : null,
               ),
               maxLines: 3,
               onChanged: (text) {
                 // Update text in controller (already happening via the TextField)
               },
             ),
-            if (state.sourceLanguage != null && _sourceTextController.text.isNotEmpty) ...[
+            if (state.sourceLanguage != null &&
+                _sourceTextController.text.isNotEmpty) ...[
               const SizedBox(height: 8),
               Align(
                 alignment: Alignment.centerRight,
@@ -290,9 +288,7 @@ class _CreatePracticePageState extends State<CreatePracticePage> {
   Widget _buildTranslatedTextInput(BuildContext context, LanguageState state) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -300,34 +296,35 @@ class _CreatePracticePageState extends State<CreatePracticePage> {
           children: [
             Text(
               'Text in ${state.targetLanguage?.name ?? "target language"}:',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _translatedTextController,
               decoration: InputDecoration(
-                hintText: 'Enter text in ${state.targetLanguage?.name ?? "target language"}',
+                hintText:
+                    'Enter text in ${state.targetLanguage?.name ?? "target language"}',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
-                suffixIcon: _translatedTextController.text.isNotEmpty && state.targetLanguage != null
-                    ? IconButton(
-                        icon: const Icon(Icons.volume_up),
-                        onPressed: () {
-                          // We will implement this with TTS widget
-                        },
-                      )
-                    : null,
+                suffixIcon:
+                    _translatedTextController.text.isNotEmpty &&
+                            state.targetLanguage != null
+                        ? IconButton(
+                          icon: const Icon(Icons.volume_up),
+                          onPressed: () {
+                            // We will implement this with TTS widget
+                          },
+                        )
+                        : null,
               ),
               maxLines: 3,
               onChanged: (text) {
                 // Update text in controller (already happening via the TextField)
               },
             ),
-            if (state.targetLanguage != null && _translatedTextController.text.isNotEmpty) ...[
+            if (state.targetLanguage != null &&
+                _translatedTextController.text.isNotEmpty) ...[
               const SizedBox(height: 8),
               Align(
                 alignment: Alignment.centerRight,
@@ -347,12 +344,7 @@ class _CreatePracticePageState extends State<CreatePracticePage> {
   Widget _buildOrDivider() {
     return Row(
       children: [
-        Expanded(
-          child: Divider(
-            color: Colors.grey[400],
-            thickness: 1,
-          ),
-        ),
+        Expanded(child: Divider(color: Colors.grey[400], thickness: 1)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Text(
@@ -363,12 +355,7 @@ class _CreatePracticePageState extends State<CreatePracticePage> {
             ),
           ),
         ),
-        Expanded(
-          child: Divider(
-            color: Colors.grey[400],
-            thickness: 1,
-          ),
-        ),
+        Expanded(child: Divider(color: Colors.grey[400], thickness: 1)),
       ],
     );
   }
@@ -385,71 +372,32 @@ class _CreatePracticePageState extends State<CreatePracticePage> {
         });
       },
       icon: const Icon(Icons.translate),
-      label: Text(_isTranslationUsed ? 'Hide Translation Tool' : 'Use Translation Tool'),
+      label: Text(
+        _isTranslationUsed ? 'Hide Translation Tool' : 'Use Translation Tool',
+      ),
       style: ElevatedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTranslationWidget(BuildContext context, LanguageState state) {
-    if (!_isTranslationUsed || state.sourceLanguage == null || state.targetLanguage == null) {
-      return const SizedBox.shrink();
-    }
-
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Translation Tool',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TranslationWidget(
-              sourceLanguageCode: state.sourceLanguage!.code,
-              targetLanguageCode: state.targetLanguage!.code,
-              onTranslationComplete: (sourceText, translatedText) {
-                setState(() {
-                  _sourceTextController.text = sourceText;
-                  _translatedTextController.text = translatedText;
-                });
-              },
-            ),
-          ],
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
 
   Widget _buildSaveButton(
-    BuildContext context, 
-    LanguageState languageState, 
-    PracticeState practiceState
+    BuildContext context,
+    LanguageState languageState,
+    PracticeState practiceState,
   ) {
-    final bool canSave = 
+    final bool canSave =
         languageState.sourceLanguage != null &&
         languageState.targetLanguage != null &&
         _sourceTextController.text.isNotEmpty &&
         _translatedTextController.text.isNotEmpty;
 
     return ElevatedButton.icon(
-      onPressed: canSave
-          ? () => _savePractice(
-              context, languageState, practiceState)
-          : null,
+      onPressed:
+          canSave
+              ? () => _savePractice(context, languageState, practiceState)
+              : null,
       icon: const Icon(Icons.save),
       label: Text(
         practiceState.status == PracticeStatus.loading
@@ -458,29 +406,28 @@ class _CreatePracticePageState extends State<CreatePracticePage> {
       ),
       style: ElevatedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
 
   void _savePractice(
-    BuildContext context, 
-    LanguageState languageState, 
-    PracticeState practiceState
+    BuildContext context,
+    LanguageState languageState,
+    PracticeState practiceState,
   ) {
     if (languageState.sourceLanguage != null &&
         languageState.targetLanguage != null &&
         _sourceTextController.text.isNotEmpty &&
         _translatedTextController.text.isNotEmpty) {
-      
-      context.read<PracticeBloc>().add(CreatePractice(
-        sourceText: _sourceTextController.text,
-        translatedText: _translatedTextController.text,
-        sourceLanguageCode: languageState.sourceLanguage!.code,
-        targetLanguageCode: languageState.targetLanguage!.code,
-      ));
+      context.read<PracticeBloc>().add(
+        CreatePractice(
+          sourceText: _sourceTextController.text,
+          translatedText: _translatedTextController.text,
+          sourceLanguageCode: languageState.sourceLanguage!.code,
+          targetLanguageCode: languageState.targetLanguage!.code,
+        ),
+      );
     }
   }
 }

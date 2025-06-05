@@ -3,13 +3,39 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:learn_to_talk/presentation/blocs/translation/translation_bloc.dart';
 import 'package:learn_to_talk/presentation/blocs/translation/translation_event.dart';
 import 'package:learn_to_talk/presentation/blocs/translation/translation_state.dart';
-import 'package:learn_to_talk/presentation/widgets/text_to_speech_widget.dart';
+import 'package:learn_to_talk/core/features/tts/text_to_speech_widget.dart';
 
+/// A reusable Translation widget that handles text translation between languages
+///
+/// This widget provides translation functionality with customizable UI options
+/// and can be integrated into any screen requiring translation capabilities.
 class TranslationWidget extends StatefulWidget {
+  /// Source language code for translation
   final String sourceLanguageCode;
+  
+  /// Target language code for translation
   final String targetLanguageCode;
+  
+  /// Whether to autofocus the text input field
   final bool autoFocus;
+  
+  /// Callback when translation is completed
   final Function(String, String)? onTranslationComplete;
+  
+  /// Initial text to translate (optional)
+  final String? initialText;
+  
+  /// Whether to use a compact layout
+  final bool compact;
+  
+  /// Whether to show TTS controls for the translated text
+  final bool showTTS;
+  
+  /// Custom style for the input text field
+  final InputDecoration? inputDecoration;
+  
+  /// Label for the translation action button
+  final String? actionButtonLabel;
 
   const TranslationWidget({
     super.key,
@@ -17,6 +43,11 @@ class TranslationWidget extends StatefulWidget {
     required this.targetLanguageCode,
     this.autoFocus = false,
     this.onTranslationComplete,
+    this.initialText,
+    this.compact = false,
+    this.showTTS = true,
+    this.inputDecoration,
+    this.actionButtonLabel,
   });
 
   @override
@@ -30,6 +61,9 @@ class _TranslationWidgetState extends State<TranslationWidget> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialText != null) {
+      _textController.text = widget.initialText!;
+    }
     // Delay to ensure bloc is initialized
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkModelAvailability();
@@ -48,6 +82,10 @@ class _TranslationWidgetState extends State<TranslationWidget> {
     if (oldWidget.sourceLanguageCode != widget.sourceLanguageCode ||
         oldWidget.targetLanguageCode != widget.targetLanguageCode) {
       _checkModelAvailability();
+    }
+    
+    if (oldWidget.initialText != widget.initialText && widget.initialText != null) {
+      _textController.text = widget.initialText!;
     }
   }
 
@@ -74,24 +112,67 @@ class _TranslationWidgetState extends State<TranslationWidget> {
         }
       },
       builder: (context, state) {
-        return SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildSourceTextInput(context, state),
-              const SizedBox(height: 16),
-              _buildTranslationArea(context, state),
-              const SizedBox(height: 16),
-              _buildActionButtons(context, state),
-              if (state.errorMessage != null) ...[
-                const SizedBox(height: 8),
-                _buildErrorMessage(state),
-              ],
-              const SizedBox(height: 16),
-            ],
-          ),
-        );
+        return widget.compact 
+          ? _buildCompactLayout(context, state) 
+          : _buildFullLayout(context, state);
       },
+    );
+  }
+  
+  /// Builds a compact translation layout with minimal UI
+  Widget _buildCompactLayout(BuildContext context, TranslationState state) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _textController,
+            autofocus: widget.autoFocus,
+            decoration: widget.inputDecoration ?? InputDecoration(
+              hintText: 'Translate...',
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onSubmitted: (_) => _translateText(context),
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.translate),
+          onPressed: _textController.text.isNotEmpty
+              ? () => _translateText(context)
+              : null,
+        ),
+        if (state.status == TranslationStatus.translating)
+          const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+      ],
+    );
+  }
+
+  /// Builds the full translation layout with all UI elements
+  Widget _buildFullLayout(BuildContext context, TranslationState state) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSourceTextInput(context, state),
+          const SizedBox(height: 16),
+          _buildTranslationArea(context, state),
+          const SizedBox(height: 16),
+          _buildActionButtons(context, state),
+          if (state.errorMessage != null) ...[
+            const SizedBox(height: 8),
+            _buildErrorMessage(state),
+          ],
+          const SizedBox(height: 16),
+        ],
+      ),
     );
   }
 
@@ -99,7 +180,7 @@ class _TranslationWidgetState extends State<TranslationWidget> {
     return TextField(
       controller: _textController,
       autofocus: widget.autoFocus,
-      decoration: InputDecoration(
+      decoration: widget.inputDecoration ?? InputDecoration(
         labelText: 'Enter text to translate',
         hintText: 'Type something to translate...',
         border: OutlineInputBorder(
@@ -113,6 +194,7 @@ class _TranslationWidgetState extends State<TranslationWidget> {
                 icon: const Icon(Icons.clear),
                 onPressed: () {
                   _textController.clear();
+                  setState(() {});
                 },
               ),
             IconButton(
@@ -176,11 +258,12 @@ class _TranslationWidgetState extends State<TranslationWidget> {
                   ),
                 ),
               ),
-              TextToSpeechWidget(
-                text: state.translatedText!,
-                languageCode: widget.targetLanguageCode,
-                compact: true,
-              ),
+              if (widget.showTTS)
+                TextToSpeechWidget(
+                  text: state.translatedText!,
+                  languageCode: widget.targetLanguageCode,
+                  compact: true,
+                ),
             ],
           ),
         ],
@@ -205,7 +288,6 @@ class _TranslationWidgetState extends State<TranslationWidget> {
         ),
       );
     }
-
     return const SizedBox.shrink();
   }
 
@@ -216,9 +298,11 @@ class _TranslationWidgetState extends State<TranslationWidget> {
         color: Colors.red[100],
         borderRadius: BorderRadius.circular(4),
       ),
+      width: double.infinity,
       child: Text(
         state.errorMessage!,
         style: const TextStyle(color: Colors.red),
+        textAlign: TextAlign.center,
       ),
     );
   }
