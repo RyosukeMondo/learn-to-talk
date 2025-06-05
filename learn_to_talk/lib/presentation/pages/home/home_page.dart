@@ -68,6 +68,7 @@ class _HomePageState extends State<HomePage> {
         // Check if language selection is complete
         if (!state.isLanguagePairSelected) {
           return LanguageSelectionPage(
+            showBackButton: false, // Hide back button on first launch
             onLanguagePairSelected: () {
               // Use addPostFrameCallback to defer the setState call until after build
               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -103,6 +104,26 @@ class _HomePageState extends State<HomePage> {
                 _currentIndex = index;
               });
             },
+          ),
+          appBar: AppBar(
+            title: const Text('Learn to Talk'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.language),
+                tooltip: 'Language Settings',
+                onPressed: () => _navigateToLanguageSettings(context),
+              ),
+              IconButton(
+                icon: const Icon(Icons.settings),
+                tooltip: 'Settings',
+                onPressed: () {
+                  // TODO: Implement additional settings page if needed
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Settings coming soon')),
+                  );
+                },
+              ),
+            ],
           ),
           bottomNavigationBar: BottomNavigationBar(
             currentIndex: _currentIndex,
@@ -145,5 +166,15 @@ class _HomePageState extends State<HomePage> {
         ),
       );
     }
+  }
+  
+  void _navigateToLanguageSettings(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const LanguageSelectionPage(
+          showBackButton: true,
+        ),
+      ),
+    );
   }
 }

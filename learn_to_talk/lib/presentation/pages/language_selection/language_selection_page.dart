@@ -8,10 +8,12 @@ import 'package:learn_to_talk/presentation/widgets/language_dropdown.dart';
 
 class LanguageSelectionPage extends StatefulWidget {
   final VoidCallback? onLanguagePairSelected;
+  final bool showBackButton;
 
   const LanguageSelectionPage({
     super.key,
     this.onLanguagePairSelected,
+    this.showBackButton = true,
   });
 
   @override
@@ -31,6 +33,8 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Select Languages'),
+        leading: widget.showBackButton ? const BackButton() : null,
+        automaticallyImplyLeading: widget.showBackButton,
       ),
       body: BlocBuilder<LanguageBloc, LanguageState>(
         builder: (context, state) {
@@ -265,13 +269,24 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
   }
 
   Widget _buildContinueButton(BuildContext context, LanguageState state) {
+    final isSelectionComplete = state.sourceLanguage != null && state.targetLanguage != null;
+    final bool canProceed =
+        isSelectionComplete && state.offlineStatus != OfflineStatus.downloading;
+
     return ElevatedButton(
-      onPressed: state.isLanguagePairSelected ? () {
-        // Trigger the callback to navigate to the next page
-        if (widget.onLanguagePairSelected != null) {
-          widget.onLanguagePairSelected!();
-        }
-      } : null,
+      onPressed: !canProceed
+          ? null
+          : () {
+              if (widget.onLanguagePairSelected != null) {
+                widget.onLanguagePairSelected!();
+              }
+
+              // If this is the settings page (has back button), go back
+              // otherwise, the onLanguagePairSelected callback will handle it
+              if (widget.showBackButton && Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              }
+            },
       style: ElevatedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(

@@ -59,3 +59,20 @@ class DownloadLanguageModels extends LanguageEvent {
 class SwapLanguages extends LanguageEvent {
   const SwapLanguages();
 }
+
+class SaveLanguagePreferences extends LanguageEvent {
+  final String sourceLanguageCode;
+  final String targetLanguageCode;
+
+  const SaveLanguagePreferences({
+    required this.sourceLanguageCode,
+    required this.targetLanguageCode,
+  });
+
+  @override
+  List<Object> get props => [sourceLanguageCode, targetLanguageCode];
+}
+
+class LoadLanguagePreferences extends LanguageEvent {
+  const LoadLanguagePreferences();
+}

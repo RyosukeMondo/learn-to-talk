@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:learn_to_talk/core/services/language_preferences_service.dart';
 import 'package:learn_to_talk/domain/usecases/get_languages_usecase.dart';
 import 'package:learn_to_talk/domain/usecases/translation_usecase.dart';
 import 'package:learn_to_talk/presentation/blocs/language/language_event.dart';
@@ -8,55 +9,56 @@ import 'package:logging/logging.dart';
 class LanguageBloc extends Bloc<LanguageEvent, LanguageState> {
   final GetLanguagesUseCase _getLanguagesUseCase;
   final TranslationUseCase _translationUseCase;
+  final LanguagePreferencesService _languagePreferencesService;
   final Logger _logger = Logger('LanguageBloc');
 
   LanguageBloc({
     required GetLanguagesUseCase getLanguagesUseCase,
     required TranslationUseCase translationUseCase,
-  }) : _getLanguagesUseCase = getLanguagesUseCase,
-       _translationUseCase = translationUseCase,
-       super(const LanguageState()) {
+    required LanguagePreferencesService languagePreferencesService,
+  })  : _getLanguagesUseCase = getLanguagesUseCase,
+        _translationUseCase = translationUseCase,
+        _languagePreferencesService = languagePreferencesService,
+        super(const LanguageState()) {
+    // Register event handlers
     on<LoadLanguages>(_onLoadLanguages);
     on<SelectSourceLanguage>(_onSelectSourceLanguage);
     on<SelectTargetLanguage>(_onSelectTargetLanguage);
     on<CheckOfflineAvailability>(_onCheckOfflineAvailability);
     on<DownloadLanguageModels>(_onDownloadLanguageModels);
     on<SwapLanguages>(_onSwapLanguages);
+    
+    // Register persistence event handlers
+    on<SaveLanguagePreferences>(_onSaveLanguagePreferences);
+    on<LoadLanguagePreferences>(_onLoadLanguagePreferences);
+    
+    // Load languages immediately when bloc is created
+    add(LoadLanguages());
   }
 
-  Future<void> _onLoadLanguages(
+  void _onLoadLanguages(
     LoadLanguages event,
     Emitter<LanguageState> emit,
   ) async {
+    emit(state.copyWith(
+      status: LanguageStatus.loading,
+    ));
+
     try {
-      _logger.info('LanguageBloc: Loading languages...');
-      emit(state.copyWith(status: LanguageStatus.loading));
-
       final languages = await _getLanguagesUseCase.execute();
-      _logger.info('LanguageBloc: Loaded languages count: ${languages.length}');
-      if (languages.isNotEmpty) {
-        for (final lang in languages) {
-          _logger.info('LanguageBloc: Language: ${lang.name} (${lang.code})');
-        }
-      } else {
-        _logger.info('LanguageBloc: No languages were loaded!');
-      }
-
-      emit(
-        state.copyWith(
-          status: LanguageStatus.loaded,
-          availableLanguages: languages,
-        ),
-      );
+      emit(state.copyWith(
+        availableLanguages: languages,
+        status: LanguageStatus.loaded,
+      ));
+      
+      // After languages are loaded, try to load language preferences
+      add(LoadLanguagePreferences());
     } catch (e) {
-      _logger.severe('LanguageBloc: Error loading languages: ${e.toString()}');
-      _logger.severe(e.toString());
-      emit(
-        state.copyWith(
-          status: LanguageStatus.error,
-          errorMessage: 'Failed to load languages: ${e.toString()}',
-        ),
-      );
+      _logger.severe('Error loading languages: $e');
+      emit(state.copyWith(
+        status: LanguageStatus.error,
+        errorMessage: 'Failed to load languages: $e',
+      ));
     }
   }
 
@@ -64,21 +66,21 @@ class LanguageBloc extends Bloc<LanguageEvent, LanguageState> {
     SelectSourceLanguage event,
     Emitter<LanguageState> emit,
   ) {
-    emit(
-      state.copyWith(
-        sourceLanguage: event.language,
-        offlineStatus: OfflineStatus.unknown,
-      ),
-    );
-
-    // If both languages are selected, check offline availability
+    emit(state.copyWith(
+      sourceLanguage: event.language,
+      offlineStatus: OfflineStatus.unknown,
+    ));
+    
     if (state.targetLanguage != null) {
-      add(
-        CheckOfflineAvailability(
-          sourceLanguageCode: event.language.code,
-          targetLanguageCode: state.targetLanguage!.code,
-        ),
-      );
+      add(CheckOfflineAvailability(
+        sourceLanguageCode: event.language.code,
+        targetLanguageCode: state.targetLanguage!.code,
+      ));
+      
+      add(SaveLanguagePreferences(
+        sourceLanguageCode: event.language.code,
+        targetLanguageCode: state.targetLanguage!.code,
+      ));
     }
   }
 
@@ -86,116 +88,188 @@ class LanguageBloc extends Bloc<LanguageEvent, LanguageState> {
     SelectTargetLanguage event,
     Emitter<LanguageState> emit,
   ) {
-    emit(
-      state.copyWith(
-        targetLanguage: event.language,
-        offlineStatus: OfflineStatus.unknown,
-      ),
-    );
-
-    // If both languages are selected, check offline availability
+    emit(state.copyWith(
+      targetLanguage: event.language,
+      offlineStatus: OfflineStatus.unknown,
+    ));
+    
     if (state.sourceLanguage != null) {
-      add(
-        CheckOfflineAvailability(
-          sourceLanguageCode: state.sourceLanguage!.code,
-          targetLanguageCode: event.language.code,
-        ),
-      );
+      add(CheckOfflineAvailability(
+        sourceLanguageCode: state.sourceLanguage!.code,
+        targetLanguageCode: event.language.code,
+      ));
+      
+      add(SaveLanguagePreferences(
+        sourceLanguageCode: state.sourceLanguage!.code,
+        targetLanguageCode: event.language.code,
+      ));
     }
   }
 
-  Future<void> _onCheckOfflineAvailability(
+  void _onCheckOfflineAvailability(
     CheckOfflineAvailability event,
     Emitter<LanguageState> emit,
   ) async {
-    try {
-      emit(state.copyWith(offlineStatus: OfflineStatus.checking));
+    emit(state.copyWith(
+      offlineStatus: OfflineStatus.checking,
+    ));
 
-      final isAvailable = await _getLanguagesUseCase.areModelsAvailableOffline(
+    try {
+      // Using the actual method name from GetLanguagesUseCase
+      final isAvailableOffline = await _getLanguagesUseCase.areModelsAvailableOffline(
         event.sourceLanguageCode,
         event.targetLanguageCode,
       );
 
-      emit(
-        state.copyWith(
-          offlineStatus:
-              isAvailable ? OfflineStatus.available : OfflineStatus.unavailable,
-        ),
-      );
+      emit(state.copyWith(
+        offlineStatus: isAvailableOffline
+            ? OfflineStatus.available
+            : OfflineStatus.unavailable,
+      ));
     } catch (e) {
-      _logger.severe(
-        'LanguageBloc: Error checking offline availability: ${e.toString()}',
-      );
-      _logger.severe(e.toString());
-      emit(
-        state.copyWith(
-          offlineStatus: OfflineStatus.unavailable,
-          errorMessage: 'Failed to check offline availability: ${e.toString()}',
-        ),
-      );
+      _logger.severe('Error checking offline availability: $e');
+      _logger.info('Source: ${event.sourceLanguageCode}, Target: ${event.targetLanguageCode}');
+      emit(state.copyWith(
+        offlineStatus: OfflineStatus.unavailable,
+        status: LanguageStatus.error,
+        errorMessage: 'Failed to check offline availability: $e',
+      ));
     }
   }
 
-  Future<void> _onDownloadLanguageModels(
+  void _onDownloadLanguageModels(
     DownloadLanguageModels event,
     Emitter<LanguageState> emit,
   ) async {
-    try {
-      emit(state.copyWith(offlineStatus: OfflineStatus.downloading));
+    emit(state.copyWith(
+      status: LanguageStatus.loading,
+      offlineStatus: OfflineStatus.downloading,
+    ));
 
-      // Download translation model
+    try {
+      // Using the actual method name from TranslationUseCase
       await _translationUseCase.downloadModel(
         event.sourceLanguageCode,
         event.targetLanguageCode,
       );
 
-      // Check if all models are now available
-      final isAvailable = await _getLanguagesUseCase.areModelsAvailableOffline(
+      // Using the correct method name to check if models are available
+      final isAvailableOffline = await _getLanguagesUseCase.areModelsAvailableOffline(
         event.sourceLanguageCode,
         event.targetLanguageCode,
       );
 
-      emit(
-        state.copyWith(
-          offlineStatus:
-              isAvailable ? OfflineStatus.available : OfflineStatus.unavailable,
-        ),
-      );
+      emit(state.copyWith(
+        status: LanguageStatus.loaded,
+        offlineStatus: isAvailableOffline
+            ? OfflineStatus.available
+            : OfflineStatus.unavailable,
+      ));
     } catch (e) {
-      _logger.severe(
-        'LanguageBloc: Error downloading language models: ${e.toString()}',
-      );
-      _logger.severe(e.toString());
-      emit(
-        state.copyWith(
-          offlineStatus: OfflineStatus.unavailable,
-          errorMessage: 'Failed to download language models: ${e.toString()}',
-        ),
-      );
+      _logger.severe('Error downloading language models: $e');
+      _logger.info('Source: ${event.sourceLanguageCode}, Target: ${event.targetLanguageCode}');
+      emit(state.copyWith(
+        status: LanguageStatus.error,
+        errorMessage: 'Failed to download language models: $e',
+      ));
     }
   }
 
-  void _onSwapLanguages(SwapLanguages event, Emitter<LanguageState> emit) {
-    // Only swap if both languages are selected
-    if (state.sourceLanguage != null && state.targetLanguage != null) {
-      final sourceLanguage = state.sourceLanguage;
-      final targetLanguage = state.targetLanguage;
+  void _onSwapLanguages(
+    SwapLanguages event,
+    Emitter<LanguageState> emit,
+  ) {
+    if (state.sourceLanguage == null || state.targetLanguage == null) {
+      return;
+    }
 
-      emit(
-        state.copyWith(
-          sourceLanguage: targetLanguage,
-          targetLanguage: sourceLanguage,
-          offlineStatus: OfflineStatus.unknown,
-        ),
-      );
+    final oldSource = state.sourceLanguage!;
+    final oldTarget = state.targetLanguage!;
 
-      // Check offline availability for the swapped language pair
-      add(
-        CheckOfflineAvailability(
-          sourceLanguageCode: targetLanguage!.code,
-          targetLanguageCode: sourceLanguage!.code,
-        ),
+    emit(state.copyWith(
+      sourceLanguage: oldTarget,
+      targetLanguage: oldSource,
+      offlineStatus: OfflineStatus.unknown,
+    ));
+
+    // Check offline availability after swapping
+    add(CheckOfflineAvailability(
+      sourceLanguageCode: oldTarget.code,
+      targetLanguageCode: oldSource.code,
+    ));
+    
+    // Save the swapped language preferences
+    add(SaveLanguagePreferences(
+      sourceLanguageCode: oldTarget.code,
+      targetLanguageCode: oldSource.code,
+    ));
+  }
+
+  void _onSaveLanguagePreferences(
+    SaveLanguagePreferences event,
+    Emitter<LanguageState> emit,
+  ) async {
+    try {
+      // Using the correct method name from LanguagePreferencesService
+      await _languagePreferencesService.saveLanguagePreferences(
+        sourceLanguageCode: event.sourceLanguageCode,
+        targetLanguageCode: event.targetLanguageCode,
       );
+      _logger.info('Language preferences saved: ${event.sourceLanguageCode} -> ${event.targetLanguageCode}');
+    } catch (e) {
+      _logger.severe('Error saving language preferences: $e');
+      // We don't update the state here as this is a background operation
+    }
+  }
+
+  void _onLoadLanguagePreferences(
+    LoadLanguagePreferences event,
+    Emitter<LanguageState> emit,
+  ) async {
+    try {
+      // Using the correct method name from LanguagePreferencesService
+      final preferences = await _languagePreferencesService.getLanguagePreferences();
+      
+      // Check if preferences exist and if languages are loaded
+      final sourceLanguageCode = preferences['sourceLanguageCode'];
+      final targetLanguageCode = preferences['targetLanguageCode'];
+      
+      if (sourceLanguageCode == null || 
+          targetLanguageCode == null ||
+          state.availableLanguages.isEmpty) {
+        _logger.info('No language preferences found or languages not loaded yet');
+        return;
+      }
+      
+      _logger.info('Language preferences loaded: $sourceLanguageCode -> $targetLanguageCode');
+      
+      // Find the language objects based on the codes stored in preferences
+      final sourceLanguage = state.availableLanguages.firstWhere(
+        (language) => language.code == sourceLanguageCode,
+        orElse: () => state.availableLanguages.first,
+      );
+      
+      final targetLanguage = state.availableLanguages.firstWhere(
+        (language) => language.code == targetLanguageCode,
+        orElse: () => state.availableLanguages.length > 1 ? state.availableLanguages[1] : state.availableLanguages.first,
+      );
+      
+      // Update state with the loaded preferences
+      emit(state.copyWith(
+        sourceLanguage: sourceLanguage,
+        targetLanguage: targetLanguage,
+        offlineStatus: OfflineStatus.unknown,
+      ));
+      
+      // Check if the language pair is available offline
+      add(CheckOfflineAvailability(
+        sourceLanguageCode: sourceLanguage.code,
+        targetLanguageCode: targetLanguage.code,
+      ));
+      
+    } catch (e) {
+      _logger.severe('Error loading language preferences: $e');
+      // Don't update state with error as this is a background operation
     }
   }
 }

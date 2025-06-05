@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:learn_to_talk/core/services/app_initializer.dart';
+import 'package:learn_to_talk/core/services/language_preferences_service.dart';
 
 // Data sources
 import 'package:learn_to_talk/data/datasources/speech_recognition_data_source.dart';
@@ -83,6 +84,9 @@ void setupDependencies() {
   getIt.registerLazySingleton<PracticeRepository>(
     () => PracticeRepositoryImpl(getIt<PracticeDataSource>()));
   
+  // Services
+  getIt.registerLazySingleton<LanguagePreferencesService>(() => LanguagePreferencesService());
+  
   // Use cases
   getIt.registerLazySingleton(() => GetLanguagesUseCase(
     speechRepository: getIt<SpeechRepository>(),
@@ -106,6 +110,7 @@ void setupDependencies() {
   getIt.registerFactory(() => LanguageBloc(
     getLanguagesUseCase: getIt<GetLanguagesUseCase>(),
     translationUseCase: getIt<TranslationUseCase>(),
+    languagePreferencesService: getIt<LanguagePreferencesService>(),
   ));
   getIt.registerFactory(() => SpeechBloc(
     speechRecognitionUseCase: getIt<SpeechRecognitionUseCase>(),
