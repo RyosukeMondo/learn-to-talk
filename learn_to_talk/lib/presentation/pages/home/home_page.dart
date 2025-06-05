@@ -46,23 +46,20 @@ class _HomePageState extends State<HomePage> {
           ),
           const TranslationPage(),
           OnTheFlyPage(
-            sourceLanguageCode: sourceLanguageCode,
-            targetLanguageCode: targetLanguageCode,
+            initialSourceLanguageCode: sourceLanguageCode,
+            initialTargetLanguageCode: targetLanguageCode,
           ),
         ]);
       });
     }
   }
-  
+
   void _checkAndInitPages() {
     final state = context.read<LanguageBloc>().state;
-    if (_pages.isEmpty && 
-        state.sourceLanguage != null && 
+    if (_pages.isEmpty &&
+        state.sourceLanguage != null &&
         state.targetLanguage != null) {
-      _initPages(
-        state.sourceLanguage!.code,
-        state.targetLanguage!.code,
-      );
+      _initPages(state.sourceLanguage!.code, state.targetLanguage!.code);
     }
   }
 
@@ -77,7 +74,8 @@ class _HomePageState extends State<HomePage> {
             onLanguagePairSelected: () {
               // Use addPostFrameCallback to defer the setState call until after build
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (state.sourceLanguage != null && state.targetLanguage != null) {
+                if (state.sourceLanguage != null &&
+                    state.targetLanguage != null) {
                   _initPages(
                     state.sourceLanguage!.code,
                     state.targetLanguage!.code,
@@ -89,13 +87,12 @@ class _HomePageState extends State<HomePage> {
         }
 
         // Initialize pages if not already done
-        if (_pages.isEmpty && state.sourceLanguage != null && state.targetLanguage != null) {
+        if (_pages.isEmpty &&
+            state.sourceLanguage != null &&
+            state.targetLanguage != null) {
           // Use addPostFrameCallback to defer the setState call until after build
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            _initPages(
-              state.sourceLanguage!.code,
-              state.targetLanguage!.code,
-            );
+            _initPages(state.sourceLanguage!.code, state.targetLanguage!.code);
           });
         }
 
@@ -168,21 +165,20 @@ class _HomePageState extends State<HomePage> {
     if (state.sourceLanguage != null && state.targetLanguage != null) {
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (context) => CreatePracticePage(
-            initialSourceLanguageCode: state.sourceLanguage!.code,
-            initialTargetLanguageCode: state.targetLanguage!.code,
-          ),
+          builder:
+              (context) => CreatePracticePage(
+                initialSourceLanguageCode: state.sourceLanguage!.code,
+                initialTargetLanguageCode: state.targetLanguage!.code,
+              ),
         ),
       );
     }
   }
-  
+
   void _navigateToLanguageSettings(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => const LanguageSelectionPage(
-          showBackButton: true,
-        ),
+        builder: (context) => const LanguageSelectionPage(showBackButton: true),
       ),
     );
   }

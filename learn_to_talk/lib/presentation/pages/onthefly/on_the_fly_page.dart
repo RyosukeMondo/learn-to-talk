@@ -3,18 +3,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:learn_to_talk/core/features/stt/speech_recognition_widget.dart';
 import 'package:learn_to_talk/core/features/tts/text_to_speech_widget.dart';
+import 'package:learn_to_talk/presentation/blocs/language/language_bloc.dart';
+import 'package:learn_to_talk/presentation/blocs/language/language_state.dart';
 import 'package:learn_to_talk/presentation/blocs/translation/translation_bloc.dart';
 import 'package:learn_to_talk/presentation/blocs/translation/translation_event.dart';
 import 'package:audioplayers/audioplayers.dart';
 
 class OnTheFlyPage extends StatefulWidget {
-  final String sourceLanguageCode;
-  final String targetLanguageCode;
+  // Initial language codes that will be updated from LanguageBloc
+  final String initialSourceLanguageCode;
+  final String initialTargetLanguageCode;
 
   const OnTheFlyPage({
     super.key,
-    required this.sourceLanguageCode,
-    required this.targetLanguageCode,
+    required this.initialSourceLanguageCode,
+    required this.initialTargetLanguageCode,
   });
 
   @override
@@ -33,7 +36,11 @@ class _OnTheFlyPageState extends State<OnTheFlyPage> {
   bool _loadingReverseTranslation = false;
   final _audioPlayer = AudioPlayer();
   StreamSubscription? _translationSubscription;
-  
+
+  // Current language codes that will be updated when language changes
+  late String _sourceLanguageCode;
+  late String _targetLanguageCode;
+
   // Reset all state to practice a new sentence
   void _resetState() {
     setState(() {
@@ -52,43 +59,49 @@ class _OnTheFlyPageState extends State<OnTheFlyPage> {
   @override
   void initState() {
     super.initState();
+    // Initialize with provided language codes
+    _sourceLanguageCode = widget.initialSourceLanguageCode;
+    _targetLanguageCode = widget.initialTargetLanguageCode;
     _setupTranslationListener();
   }
 
   void _setupTranslationListener() {
     final translationBloc = context.read<TranslationBloc>();
-    _translationSubscription = translationBloc.stream.listen((state) {
-      // Always check if widget is still mounted before updating state
-      if (!mounted) return;
-      
-      if (state.translatedText != null) {
-        try {
-          // Handle forward translation (source language -> target language)
-          if (state.sourceLanguageCode == widget.sourceLanguageCode && 
-              state.targetLanguageCode == widget.targetLanguageCode) {
-            setState(() {
-              _translatedText = state.translatedText;
-              _showTranslation = true;
-            });
-          } 
-          // Handle reverse translation (target language -> source language)
-          else if (state.sourceLanguageCode == widget.targetLanguageCode && 
-                   state.targetLanguageCode == widget.sourceLanguageCode && 
-                   state.sourceText == _userAttemptText) {
-            setState(() {
-              _userAttemptTranslation = state.translatedText;
-              _loadingReverseTranslation = false;
-            });
+    _translationSubscription = translationBloc.stream.listen(
+      (state) {
+        // Always check if widget is still mounted before updating state
+        if (!mounted) return;
+
+        if (state.translatedText != null) {
+          try {
+            // Handle forward translation (source language -> target language)
+            if (state.sourceLanguageCode == _sourceLanguageCode &&
+                state.targetLanguageCode == _targetLanguageCode) {
+              setState(() {
+                _translatedText = state.translatedText;
+                _showTranslation = true;
+              });
+            }
+            // Handle reverse translation (target language -> source language)
+            else if (state.sourceLanguageCode == _targetLanguageCode &&
+                state.targetLanguageCode == _sourceLanguageCode &&
+                state.sourceText == _userAttemptText) {
+              setState(() {
+                _userAttemptTranslation = state.translatedText;
+                _loadingReverseTranslation = false;
+              });
+            }
+          } catch (e) {
+            // Safely handle any errors that might occur during setState
+            debugPrint('Error updating state in translation listener: $e');
           }
-        } catch (e) {
-          // Safely handle any errors that might occur during setState
-          debugPrint('Error updating state in translation listener: $e');
         }
-      }
-    }, onError: (error) {
-      // Handle stream errors properly
-      debugPrint('Error in translation stream: $error');
-    });
+      },
+      onError: (error) {
+        // Handle stream errors properly
+        debugPrint('Error in translation stream: $error');
+      },
+    );
   }
 
   @override
@@ -98,39 +111,63 @@ class _OnTheFlyPageState extends State<OnTheFlyPage> {
     super.dispose();
   }
 
+  // Method to update language codes when they change in the LanguageBloc
+  void _updateLanguageCodes(LanguageState state) {
+    if (state.sourceLanguage != null && state.targetLanguage != null) {
+      // Only update if the languages have changed to avoid unnecessary state changes
+      if (_sourceLanguageCode != state.sourceLanguage!.code ||
+          _targetLanguageCode != state.targetLanguage!.code) {
+        setState(() {
+          _sourceLanguageCode = state.sourceLanguage!.code;
+          _targetLanguageCode = state.targetLanguage!.code;
+          // Reset state since we have new languages
+          _resetState();
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Align(
-              alignment: Alignment.topRight,
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: ElevatedButton.icon(
-                  onPressed: _resetState,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Reset'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red[100],
-                    foregroundColor: Colors.red[800],
+    // Listen to the LanguageBloc to update language codes when they change
+    return BlocListener<LanguageBloc, LanguageState>(
+      listener: (context, state) {
+        _updateLanguageCodes(state);
+      },
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Align(
+                alignment: Alignment.topRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: ElevatedButton.icon(
+                    onPressed: _resetState,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Reset'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red[100],
+                      foregroundColor: Colors.red[800],
+                    ),
                   ),
                 ),
               ),
-            ),
-            if (!_isCheckingPronunciation) _buildInstructions(),
-            const SizedBox(height: 24),
-            _isCheckingPronunciation
-                ? _buildPronunciationCheck()
-                : _buildSourceRecognition(),
-            const SizedBox(height: 24),
-            if (_showTranslation && _translatedText != null && !_isCheckingPronunciation)
-              _buildTranslation(),
-            if (_pronunciationChecked) _buildPronunciationFeedback(),
-          ],
+              if (!_isCheckingPronunciation) _buildInstructions(),
+              const SizedBox(height: 24),
+              _isCheckingPronunciation
+                  ? _buildPronunciationCheck()
+                  : _buildSourceRecognition(),
+              const SizedBox(height: 24),
+              if (_showTranslation &&
+                  _translatedText != null &&
+                  !_isCheckingPronunciation)
+                _buildTranslation(),
+              if (_pronunciationChecked) _buildPronunciationFeedback(),
+            ],
+          ),
         ),
       ),
     );
@@ -179,10 +216,12 @@ class _OnTheFlyPageState extends State<OnTheFlyPage> {
             ),
             const SizedBox(height: 16),
             SpeechRecognitionWidget(
-              languageCode: widget.sourceLanguageCode,
+              languageCode: _sourceLanguageCode,
               onRecognized: (text) {
                 if (!mounted) return; // Guard against setState after dispose
-                setState(() { _sourceText = text; });
+                setState(() {
+                  _sourceText = text;
+                });
                 // Move the translation out of setState to avoid nested async calls
                 _translateText(text);
               },
@@ -225,9 +264,12 @@ class _OnTheFlyPageState extends State<OnTheFlyPage> {
               spacing: 16,
               runSpacing: 16,
               children: [
-                TextToSpeechWidget(
-                  text: _translatedText!,
-                  languageCode: widget.targetLanguageCode,
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextToSpeechWidget(
+                    text: _translatedText!,
+                    languageCode: _targetLanguageCode,
+                  ),
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -249,14 +291,16 @@ class _OnTheFlyPageState extends State<OnTheFlyPage> {
   Widget _buildPronunciationCheck() {
     return Card(
       elevation: 3,
-      color: Colors.green.shade50,
+      color: Colors.blue.shade50,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
             Text(
-              'Practice Speaking',
-              style: Theme.of(context).textTheme.titleMedium,
+              'Try to pronounce this in $_targetLanguageCode',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(color: Colors.blue.shade900),
             ),
             const SizedBox(height: 16),
             Text(
@@ -267,7 +311,7 @@ class _OnTheFlyPageState extends State<OnTheFlyPage> {
             const SizedBox(height: 16),
             TextToSpeechWidget(
               text: _translatedText ?? '',
-              languageCode: widget.targetLanguageCode,
+              languageCode: _targetLanguageCode,
             ),
             const SizedBox(height: 24),
             Text(
@@ -276,11 +320,13 @@ class _OnTheFlyPageState extends State<OnTheFlyPage> {
             ),
             const SizedBox(height: 16),
             SpeechRecognitionWidget(
-              languageCode: widget.targetLanguageCode,
+              languageCode: _targetLanguageCode,
               onRecognized: (text) {
-                if (!mounted) return; // Guard against setState after dispose
-                setState(() { _userAttemptText = text; });
-                // Move the pronunciation check out of setState to avoid nested async calls
+                if (!mounted) return;
+                setState(() {
+                  _userAttemptText = text;
+                  _pronunciationChecked = false;
+                });
                 _checkPronunciation();
               },
             ),
@@ -344,7 +390,7 @@ class _OnTheFlyPageState extends State<OnTheFlyPage> {
               ),
               textAlign: TextAlign.center,
             ),
-            if (!_pronunciationMatched && _userAttemptText != null) ...[              
+            if (!_pronunciationMatched && _userAttemptText != null) ...[
               // What you said
               Padding(
                 padding: const EdgeInsets.only(top: 16.0),
@@ -357,18 +403,18 @@ class _OnTheFlyPageState extends State<OnTheFlyPage> {
                   ),
                 ),
               ),
-              
+
               // Listen to your pronunciation
               Padding(
                 padding: const EdgeInsets.only(top: 8.0),
                 child: TextToSpeechWidget(
                   text: _userAttemptText!,
-                  languageCode: widget.targetLanguageCode,
+                  languageCode: _targetLanguageCode,
                 ),
               ),
-              
+
               // Translation back to source language
-              if (_userAttemptTranslation != null) ...[                
+              if (_userAttemptTranslation != null) ...[
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16.0),
                   child: Text(
@@ -379,15 +425,13 @@ class _OnTheFlyPageState extends State<OnTheFlyPage> {
                       color: Colors.blue.shade800,
                     ),
                   ),
-                ),                
+                ),
               ],
-              
+
               if (_loadingReverseTranslation)
                 Padding(
                   padding: const EdgeInsets.only(top: 16.0),
-                  child: Center(
-                    child: CircularProgressIndicator(),
-                  ),
+                  child: Center(child: CircularProgressIndicator()),
                 ),
             ],
           ],
@@ -397,24 +441,19 @@ class _OnTheFlyPageState extends State<OnTheFlyPage> {
   }
 
   void _translateText(String text) {
-    // Always check mounted before accessing context
-    if (!mounted) return;
-    
-    final translationBloc = context.read<TranslationBloc>();
-    translationBloc.add(
+    context.read<TranslationBloc>().add(
       TranslateText(
         text: text,
-        sourceLanguageCode: widget.sourceLanguageCode,
-        targetLanguageCode: widget.targetLanguageCode,
+        sourceLanguageCode: _sourceLanguageCode,
+        targetLanguageCode: _targetLanguageCode,
       ),
     );
-    // We're now using the listener set up in initState instead of creating a new one here
   }
 
   void _checkPronunciation() {
     if (_userAttemptText != null && _translatedText != null) {
       if (!mounted) return; // Guard against setState after dispose
-      
+
       // Simple string comparison for now - could be enhanced with fuzzy matching
       // or more sophisticated pronunciation comparison algorithms
       final normalizedTranslation = _translatedText!.toLowerCase().trim();
@@ -428,7 +467,7 @@ class _OnTheFlyPageState extends State<OnTheFlyPage> {
 
       // Play sound feedback based on match result
       _playFeedbackSound(matched);
-      
+
       // If pronunciation doesn't match, translate user's attempt back to source language
       if (!matched && _userAttemptText!.isNotEmpty) {
         _translateUserAttemptToSource();
@@ -448,7 +487,7 @@ class _OnTheFlyPageState extends State<OnTheFlyPage> {
     } catch (e) {
       // Silently handle errors with sound playback
       debugPrint('Error playing sound: $e');
-      
+
       // Check if widget is still mounted before using BuildContext
       if (mounted) {
         // Give visual feedback in case sound doesn't work
@@ -458,26 +497,26 @@ class _OnTheFlyPageState extends State<OnTheFlyPage> {
       }
     }
   }
-  
+
   // Translate user's attempt back to their source language
   void _translateUserAttemptToSource() {
     if (_userAttemptText == null || _userAttemptText!.isEmpty) return;
-    
+
     // Guard against setState after dispose
     if (!mounted) return;
-    
+
     setState(() {
       _loadingReverseTranslation = true;
       _userAttemptTranslation = null;
     });
-    
+
     // Since we checked mounted above, context should be safe to use
     final translationBloc = context.read<TranslationBloc>();
     translationBloc.add(
       TranslateText(
         text: _userAttemptText!,
-        sourceLanguageCode: widget.targetLanguageCode, // Reverse the source and target
-        targetLanguageCode: widget.sourceLanguageCode,
+        sourceLanguageCode: _targetLanguageCode,
+        targetLanguageCode: _sourceLanguageCode,
       ),
     );
     // No need to create a new listener here - using the one in _setupTranslationListener
