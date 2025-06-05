@@ -1,12 +1,15 @@
 import 'dart:async';
 
 import 'package:learn_to_talk/data/models/language_model.dart';
+import 'package:logging/logging.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_recognition_error.dart';
 
 class SpeechDataSource {
+  // Logger for this class
+  final Logger _logger = Logger('SpeechDataSource');
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isInitialized = false;
   bool _isRecognizing = false;
@@ -39,26 +42,26 @@ class SpeechDataSource {
       );
 
       if (_isInitialized) {
-        print('SpeechDataSource: Speech recognition initialized successfully');
+        _logger.info('Speech recognition initialized successfully');
       } else {
-        print('SpeechDataSource: Speech recognition failed to initialize');
+        _logger.warning('Speech recognition failed to initialize');
       }
 
       return _isInitialized;
     } catch (e) {
-      print('SpeechDataSource: Error initializing speech recognition: $e');
+      _logger.severe('Error initializing speech recognition', e);
       _recognitionErrorsController.add("Failed to initialize: $e");
       return false;
     }
   }
 
   void _onSpeechError(SpeechRecognitionError errorNotification) {
-    print('SpeechDataSource: Speech error: ${errorNotification.errorMsg}');
+    _logger.warning('Speech error: ${errorNotification.errorMsg}');
     _recognitionErrorsController.add(errorNotification.errorMsg);
   }
 
   void _onSpeechStatusChanged(String status) {
-    print('SpeechDataSource: Speech status: $status');
+    _logger.info('Speech status: $status');
     _isRecognizing = status == 'listening';
     _listeningStatusController.add(_isRecognizing);
   }
@@ -78,7 +81,7 @@ class SpeechDataSource {
     try {
       // Get on-device speech recognition languages
       final locales = await _speech.locales();
-      print('SpeechDataSource: Found ${locales.length} languages');
+      _logger.info('Found ${locales.length} languages');
 
       if (locales.isEmpty) {
         // Fallback languages in case device doesn't provide any
@@ -95,7 +98,7 @@ class SpeechDataSource {
           )
           .toList();
     } catch (e) {
-      print('SpeechDataSource: Error getting languages: $e');
+      _logger.warning('Error getting languages', e);
       return _getFallbackLanguages();
     }
   }
@@ -135,12 +138,10 @@ class SpeechDataSource {
             locale.localeId.split('_')[0].toLowerCase() ==
                 languageCode.replaceAll('-', '_').split('_')[0].toLowerCase(),
       );
-      print(
-        'SpeechDataSource: Language $languageCode availability: $isAvailable',
-      );
+      _logger.info('Language $languageCode availability: $isAvailable');
       return isAvailable;
     } catch (e) {
-      print('SpeechDataSource: Error checking language availability: $e');
+      _logger.warning('Error checking language availability', e);
       return false;
     }
   }
@@ -150,7 +151,7 @@ class SpeechDataSource {
       if (!_isInitialized) {
         final initSuccess = await initialize();
         if (!initSuccess) {
-          print('SpeechDataSource: Failed to initialize speech recognition');
+          _logger.warning('Failed to initialize speech recognition');
           return false;
         }
       }
@@ -160,16 +161,14 @@ class SpeechDataSource {
       }
 
       _languageCode = languageCode;
-      print(
-        'SpeechDataSource: Starting recognition with language: $_languageCode',
-      );
+      _logger.info('Starting recognition with language: $_languageCode');
 
       // First check if the language is available for offline recognition
       final isLanguageAvailable =
           await isLanguageAvailableForOfflineRecognition(_languageCode);
       if (!isLanguageAvailable) {
-        print(
-          'SpeechDataSource: Language $_languageCode not available for offline recognition',
+        _logger.warning(
+          'Language $_languageCode not available for offline recognition',
         );
         // Try to continue anyway, but log the warning
       }
@@ -188,22 +187,20 @@ class SpeechDataSource {
 
         // Properly handle null result - assume success unless explicitly false
         if (result == null) {
-          print(
-            'SpeechDataSource: Warning - _speech.listen() returned null, assuming success',
-          );
+          _logger.warning('_speech.listen() returned null, assuming success');
           _isRecognizing = true;
         } else {
           _isRecognizing = result;
         }
       } catch (e) {
-        print('SpeechDataSource: Error during listen call: $e');
+        _logger.severe('Error during listen call', e);
         _isRecognizing = false;
       }
 
       _listeningStatusController.add(_isRecognizing);
       return _isRecognizing;
     } catch (e) {
-      print('SpeechDataSource: Failed to start listening: $e');
+      _logger.severe('Failed to start listening', e);
       _recognitionErrorsController.add("Failed to start listening: $e");
       _isRecognizing = false;
       _listeningStatusController.add(false);
@@ -213,10 +210,10 @@ class SpeechDataSource {
 
   void _onSpeechResult(SpeechRecognitionResult result) {
     if (result.finalResult) {
-      print('SpeechDataSource: Final result: ${result.recognizedWords}');
+      _logger.info('Final result: ${result.recognizedWords}');
       _recognitionResultsController.add(result.recognizedWords);
     } else {
-      print('SpeechDataSource: Partial result: ${result.recognizedWords}');
+      _logger.fine('Partial result: ${result.recognizedWords}');
       // Optionally handle partial results if needed
     }
   }
@@ -224,7 +221,7 @@ class SpeechDataSource {
   Future<void> stopRecognition() async {
     if (!_isRecognizing) return;
 
-    print('SpeechDataSource: Stopping recognition');
+    _logger.info('Stopping recognition');
     await _speech.stop();
     _isRecognizing = false;
     _listeningStatusController.add(false);
@@ -236,9 +233,9 @@ class SpeechDataSource {
       await _recognitionResultsController.close();
       await _recognitionErrorsController.close();
       await _listeningStatusController.close();
-      print('SpeechDataSource: Resources disposed');
+      _logger.info('Resources disposed');
     } catch (e) {
-      print('SpeechDataSource: Error disposing speech resources: $e');
+      _logger.severe('Error disposing speech resources', e);
     }
   }
 }

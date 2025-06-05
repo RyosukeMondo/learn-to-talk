@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
+import 'package:learn_to_talk/core/services/app_initializer.dart';
 
 // Data sources
 import 'package:learn_to_talk/data/datasources/speech_recognition_data_source.dart';
@@ -45,8 +46,11 @@ import 'package:learn_to_talk/presentation/pages/home/home_page.dart';
 
 final getIt = GetIt.instance;
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize app services (logging, etc.)
+  await AppInitializer.init();
   
   // Setup dependency injection
   setupDependencies();
