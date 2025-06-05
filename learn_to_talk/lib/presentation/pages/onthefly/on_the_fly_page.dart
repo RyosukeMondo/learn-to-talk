@@ -63,6 +63,16 @@ class _OnTheFlyPageState extends State<OnTheFlyPage> {
     _sourceLanguageCode = widget.initialSourceLanguageCode;
     _targetLanguageCode = widget.initialTargetLanguageCode;
     _setupTranslationListener();
+    
+    // Ensure we're using the latest language settings from the LanguageBloc
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final state = context.read<LanguageBloc>().state;
+        if (state.sourceLanguage != null && state.targetLanguage != null) {
+          _updateLanguageCodes(state);
+        }
+      }
+    });
   }
 
   void _setupTranslationListener() {
@@ -123,6 +133,8 @@ class _OnTheFlyPageState extends State<OnTheFlyPage> {
           // Reset state since we have new languages
           _resetState();
         });
+        
+        debugPrint('OnTheFlyPage: Language changed - Source: $_sourceLanguageCode, Target: $_targetLanguageCode');
       }
     }
   }
@@ -131,6 +143,11 @@ class _OnTheFlyPageState extends State<OnTheFlyPage> {
   Widget build(BuildContext context) {
     // Listen to the LanguageBloc to update language codes when they change
     return BlocListener<LanguageBloc, LanguageState>(
+      listenWhen: (previous, current) {
+        // Only trigger listener when language codes change
+        return (previous.sourceLanguage?.code != current.sourceLanguage?.code) ||
+               (previous.targetLanguage?.code != current.targetLanguage?.code);
+      },
       listener: (context, state) {
         _updateLanguageCodes(state);
       },

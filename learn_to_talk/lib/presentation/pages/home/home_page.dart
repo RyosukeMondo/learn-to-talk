@@ -19,6 +19,10 @@ class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
   final List<Widget> _pages = [];
   final PageController _pageController = PageController();
+  
+  // Track the current language codes to detect changes
+  String? _currentSourceLanguageCode;
+  String? _currentTargetLanguageCode;
 
   @override
   void initState() {
@@ -37,6 +41,10 @@ class _HomePageState extends State<HomePage> {
 
   void _initPages(String sourceLanguageCode, String targetLanguageCode) {
     if (mounted) {
+      // Update our tracking variables
+      _currentSourceLanguageCode = sourceLanguageCode;
+      _currentTargetLanguageCode = targetLanguageCode;
+      
       setState(() {
         _pages.clear();
         _pages.addAll([
@@ -65,7 +73,22 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<LanguageBloc, LanguageState>(
+    return BlocConsumer<LanguageBloc, LanguageState>(
+      listener: (context, state) {
+        // Check if language has changed
+        if (state.sourceLanguage != null && 
+            state.targetLanguage != null &&
+            (_currentSourceLanguageCode != state.sourceLanguage!.code ||
+             _currentTargetLanguageCode != state.targetLanguage!.code)) {
+          
+          // Update tracking variables
+          _currentSourceLanguageCode = state.sourceLanguage!.code;
+          _currentTargetLanguageCode = state.targetLanguage!.code;
+          
+          // Rebuild pages with new language settings
+          _initPages(state.sourceLanguage!.code, state.targetLanguage!.code);
+        }
+      },
       builder: (context, state) {
         // Check if language selection is complete
         if (!state.isLanguagePairSelected) {
@@ -180,6 +203,17 @@ class _HomePageState extends State<HomePage> {
       MaterialPageRoute(
         builder: (context) => const LanguageSelectionPage(showBackButton: true),
       ),
-    );
+    ).then((_) {
+      // Check if languages changed when returning from language settings
+      final state = context.read<LanguageBloc>().state;
+      if (state.sourceLanguage != null && 
+          state.targetLanguage != null &&
+          (_currentSourceLanguageCode != state.sourceLanguage!.code ||
+           _currentTargetLanguageCode != state.targetLanguage!.code)) {
+        
+        // Rebuild pages with new language settings
+        _initPages(state.sourceLanguage!.code, state.targetLanguage!.code);
+      }
+    });
   }
 }

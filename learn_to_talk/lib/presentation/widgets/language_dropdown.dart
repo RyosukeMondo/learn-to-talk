@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:learn_to_talk/core/utils/language_display_util.dart';
 import 'package:learn_to_talk/domain/entities/language.dart';
 
 class LanguageDropdown extends StatelessWidget {
@@ -43,7 +44,8 @@ class LanguageDropdown extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      language.name,
+                      // Use the user-friendly name from our utility class
+                      LanguageDisplayUtil.getDisplayName(language),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
