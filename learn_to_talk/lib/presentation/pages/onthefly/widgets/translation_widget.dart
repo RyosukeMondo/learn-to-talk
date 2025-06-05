@@ -5,12 +5,16 @@ class TranslationWidget extends StatelessWidget {
   final String translatedText;
   final String targetLanguageCode;
   final VoidCallback onPracticePressed;
+  final double textSizeFactor;
+  final double? fontSize;
 
   const TranslationWidget({
     super.key,
     required this.translatedText,
     required this.targetLanguageCode,
     required this.onPracticePressed,
+    this.textSizeFactor = 3.0,
+    this.fontSize,
   });
 
   @override
@@ -26,7 +30,10 @@ class TranslationWidget extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               translatedText,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                fontSize: fontSize ?? (20 * textSizeFactor),
+                fontWeight: FontWeight.w500,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),

@@ -19,11 +19,17 @@ class OnTheFlyPage extends StatefulWidget {
   // Initial language codes that will be updated from LanguageBloc
   final String initialSourceLanguageCode;
   final String initialTargetLanguageCode;
+  
+  // Text size configuration
+  final double textSizeFactor;
+  final double? targetTextSize;
 
   const OnTheFlyPage({
     super.key,
     required this.initialSourceLanguageCode,
     required this.initialTargetLanguageCode,
+    this.textSizeFactor = 3.0,
+    this.targetTextSize,
   });
 
   @override
@@ -197,6 +203,8 @@ class _OnTheFlyPageState extends State<OnTheFlyPage> {
                             translatedText: _translatedText ?? '',
                             targetLanguageCode: _targetLanguageCode,
                             userAttemptText: _userAttemptText,
+                            textSizeFactor: widget.textSizeFactor,
+                            fontSize: widget.targetTextSize,
                             onRecognized: (text) {
                               if (!mounted) return;
                               setState(() {
@@ -233,6 +241,8 @@ class _OnTheFlyPageState extends State<OnTheFlyPage> {
                       TranslationWidget(
                         translatedText: _translatedText!,
                         targetLanguageCode: _targetLanguageCode,
+                        textSizeFactor: widget.textSizeFactor,
+                        fontSize: widget.targetTextSize,
                         onPracticePressed: () {
                           setState(() {
                             _isCheckingPronunciation = true;

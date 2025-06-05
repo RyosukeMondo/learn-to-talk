@@ -21,9 +21,8 @@ class PronunciationFeedbackWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 3,
-      color: pronunciationMatched
-          ? Colors.green.shade100
-          : Colors.orange.shade100,
+      color:
+          pronunciationMatched ? Colors.green.shade100 : Colors.orange.shade100,
       child: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Column(
@@ -39,13 +38,14 @@ class PronunciationFeedbackWidget extends StatelessWidget {
             Text(
               pronunciationMatched
                   ? 'Great job! Your pronunciation matched.'
-                  : 'Let\'s try again. Listen to your pronunciation:',
+                  : 'try again.',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: pronunciationMatched
-                    ? Colors.green.shade800
-                    : Colors.orange.shade800,
+                color:
+                    pronunciationMatched
+                        ? Colors.green.shade800
+                        : Colors.orange.shade800,
               ),
               textAlign: TextAlign.center,
             ),
@@ -55,7 +55,7 @@ class PronunciationFeedbackWidget extends StatelessWidget {
                 child: Text(
                   'You said: $userAttemptText',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 20,
                     fontWeight: FontWeight.w500,
                     color: Colors.orange.shade800,
                   ),
@@ -63,9 +63,12 @@ class PronunciationFeedbackWidget extends StatelessWidget {
               ),
               Padding(
                 padding: const EdgeInsets.only(top: 4.0),
-                child: SimpleTTSWidget(
-                  text: userAttemptText!,
-                  languageCode: targetLanguageCode,
+                child: Transform.scale(
+                  scale: 1.5,
+                  child: SimpleTTSWidget(
+                    text: userAttemptText!,
+                    languageCode: targetLanguageCode,
+                  ),
                 ),
               ),
               if (userAttemptTranslation != null) ...[
@@ -74,7 +77,7 @@ class PronunciationFeedbackWidget extends StatelessWidget {
                   child: Text(
                     'In your language: $userAttemptTranslation',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 20,
                       fontWeight: FontWeight.w500,
                       color: Colors.blue.shade800,
                     ),

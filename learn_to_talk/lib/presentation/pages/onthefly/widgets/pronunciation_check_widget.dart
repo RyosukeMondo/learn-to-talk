@@ -8,6 +8,8 @@ class PronunciationCheckWidget extends StatelessWidget {
   final String? userAttemptText;
   final Function(String) onRecognized;
   final VoidCallback onBackPressed;
+  final double textSizeFactor;
+  final double? fontSize;
 
   const PronunciationCheckWidget({
     super.key,
@@ -16,6 +18,8 @@ class PronunciationCheckWidget extends StatelessWidget {
     required this.userAttemptText,
     required this.onRecognized,
     required this.onBackPressed,
+    this.textSizeFactor = 3.0,
+    this.fontSize,
   });
 
   @override
@@ -33,29 +37,31 @@ class PronunciationCheckWidget extends StatelessWidget {
                 Expanded(
                   child: Text(
                     'Try to pronounce this:',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.blue.shade900),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.blue.shade900,
+                    ),
                   ),
                 ),
                 SimpleTTSWidget(
                   text: translatedText,
                   languageCode: targetLanguageCode,
-                )
+                ),
               ],
             ),
             const SizedBox(height: 8),
             Text(
               translatedText,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                fontSize: fontSize ?? (18 * textSizeFactor),
+                fontWeight: FontWeight.w500,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Say it:',
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
+                Text('Say it:', style: Theme.of(context).textTheme.bodyLarge),
                 SimpleSpeechWidget(
                   languageCode: targetLanguageCode,
                   onRecognized: onRecognized,
@@ -66,9 +72,9 @@ class PronunciationCheckWidget extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 8.0),
                 child: Text(
-                  'You said: $userAttemptText',
-                  style: const TextStyle(
-                    fontSize: 18,
+                  '$userAttemptText',
+                  style: TextStyle(
+                    fontSize: fontSize ?? (18 * textSizeFactor),
                     fontStyle: FontStyle.italic,
                   ),
                 ),
