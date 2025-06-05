@@ -6,6 +6,7 @@ import 'package:learn_to_talk/presentation/pages/language_selection/language_sel
 import 'package:learn_to_talk/presentation/pages/practice/practice_page.dart';
 import 'package:learn_to_talk/presentation/pages/translation/translation_page.dart';
 import 'package:learn_to_talk/presentation/pages/practice/create_practice_page.dart';
+import 'package:learn_to_talk/presentation/pages/onthefly/on_the_fly_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -44,6 +45,10 @@ class _HomePageState extends State<HomePage> {
             targetLanguageCode: targetLanguageCode,
           ),
           const TranslationPage(),
+          OnTheFlyPage(
+            sourceLanguageCode: sourceLanguageCode,
+            targetLanguageCode: targetLanguageCode,
+          ),
         ]);
       });
     }
@@ -141,6 +146,10 @@ class _HomePageState extends State<HomePage> {
               BottomNavigationBarItem(
                 icon: Icon(Icons.translate),
                 label: 'Translate',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.record_voice_over),
+                label: 'On-the-Fly',
               ),
             ],
           ),
