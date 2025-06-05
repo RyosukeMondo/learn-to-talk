@@ -180,9 +180,11 @@ class SpeechDataSource {
           onResult: _onSpeechResult,
           listenFor: const Duration(seconds: 30), // Adjust as needed
           pauseFor: const Duration(seconds: 3), // Adjust as needed
-          partialResults: true,
           localeId: _languageCode,
-          cancelOnError: true,
+          listenOptions: stt.SpeechListenOptions(
+            partialResults: true,
+            cancelOnError: true,
+          ),
         );
 
         // Properly handle null result - assume success unless explicitly false
