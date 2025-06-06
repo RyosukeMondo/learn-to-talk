@@ -3,6 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:learn_to_talk/core/services/app_initializer.dart';
 import 'package:learn_to_talk/core/services/language_preferences_service.dart';
+import 'package:learn_to_talk/core/services/network_connectivity_service.dart';
+import 'package:learn_to_talk/core/services/performance_monitoring_service.dart';
+import 'package:learn_to_talk/domain/services/model_download_service.dart';
 
 // Data sources
 import 'package:learn_to_talk/data/datasources/speech_recognition_data_source.dart';
@@ -85,7 +88,14 @@ void setupDependencies() {
     () => PracticeRepositoryImpl(getIt<PracticeDataSource>()));
   
   // Services
-  getIt.registerLazySingleton<LanguagePreferencesService>(() => LanguagePreferencesService());
+  getIt.registerLazySingleton(() => LanguagePreferencesService());
+  getIt.registerLazySingleton(() => NetworkConnectivityService());
+  getIt.registerLazySingleton(() => PerformanceMonitoringService());
+  getIt.registerLazySingleton(() => ModelDownloadService(
+    translationRepository: getIt<TranslationRepository>(),
+    speechRepository: getIt<SpeechRepository>(),
+    ttsRepository: getIt<TTSRepository>(),
+  ));
   
   // Use cases
   getIt.registerLazySingleton(() => GetLanguagesUseCase(
@@ -109,7 +119,6 @@ void setupDependencies() {
   // BLoCs
   getIt.registerFactory(() => LanguageBloc(
     getLanguagesUseCase: getIt<GetLanguagesUseCase>(),
-    translationUseCase: getIt<TranslationUseCase>(),
     languagePreferencesService: getIt<LanguagePreferencesService>(),
   ));
   getIt.registerFactory(() => SpeechBloc(

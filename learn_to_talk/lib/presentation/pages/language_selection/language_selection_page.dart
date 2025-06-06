@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_it/get_it.dart';
 import 'package:learn_to_talk/domain/entities/language.dart';
+import 'package:learn_to_talk/domain/services/model_download_service.dart';
 import 'package:learn_to_talk/presentation/blocs/language/language_bloc.dart';
 import 'package:learn_to_talk/presentation/blocs/language/language_event.dart';
 import 'package:learn_to_talk/presentation/blocs/language/language_state.dart';
 import 'package:learn_to_talk/presentation/widgets/language_dropdown.dart';
+import 'package:learn_to_talk/presentation/widgets/model_download_widget.dart';
 
 class LanguageSelectionPage extends StatefulWidget {
   final VoidCallback? onLanguagePairSelected;
@@ -168,6 +171,10 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
       return const SizedBox.shrink();
     }
 
+    return _buildOfflineStatusCard(context, state);
+  }
+
+  Widget _buildOfflineStatusCard(BuildContext context, LanguageState state) {
     switch (state.offlineStatus) {
       case OfflineStatus.checking:
         return const Center(
@@ -179,91 +186,74 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
             ],
           ),
         );
+        
       case OfflineStatus.available:
-        return const Card(
+        return Card(
           color: Colors.green,
           child: Padding(
-            padding: EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16.0),
             child: Row(
               children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8),
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'All language models are available for offline use',
-                    style: TextStyle(color: Colors.white),
+                    state.sourceLanguage != null && state.targetLanguage != null
+                        ? 'Language models for ${state.sourceLanguage!.name} and ${state.targetLanguage!.name} are available offline'
+                        : 'All required language models are available offline',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
             ),
           ),
         );
-      case OfflineStatus.unavailable:
-        return Card(
-          color: Colors.orange,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.warning, color: Colors.white),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Some language models need to be downloaded for offline use',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    if (state.sourceLanguage != null && state.targetLanguage != null) {
-                      context.read<LanguageBloc>().add(DownloadLanguageModels(
-                        sourceLanguageCode: state.sourceLanguage!.code,
-                        targetLanguageCode: state.targetLanguage!.code,
-                      ));
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.orange,
-                  ),
-                  child: const Text('Download Models'),
-                ),
-              ],
-            ),
-          ),
-        );
+        
       case OfflineStatus.downloading:
-        return const Card(
+        return Card(
           color: Colors.blue,
           child: Padding(
-            padding: EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16.0),
             child: Row(
               children: [
-                SizedBox(
-                  width: 24,
-                  height: 24,
+                const SizedBox(
+                  width: 20,
+                  height: 20,
                   child: CircularProgressIndicator(
-                    color: Colors.white,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     strokeWidth: 2,
                   ),
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Downloading language models...',
-                    style: TextStyle(color: Colors.white),
+                    state.downloadProgress ?? 'Downloading language models...',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
             ),
           ),
         );
-      default:
+        
+      case OfflineStatus.unavailable:
+        if (state.sourceLanguage != null && state.targetLanguage != null) {
+          return ModelDownloadWidget(
+            sourceLanguage: state.sourceLanguage,
+            targetLanguage: state.targetLanguage,
+            downloadService: GetIt.instance<ModelDownloadService>(),
+          );
+        } else {
+          return Card(
+            color: Colors.orange,
+            child: const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text('Please select both languages to check offline availability'),
+            ),
+          );
+        }
+        
+      case OfflineStatus.unknown:
         return const SizedBox.shrink();
     }
   }

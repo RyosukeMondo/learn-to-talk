@@ -1,23 +1,19 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:learn_to_talk/core/services/language_preferences_service.dart';
 import 'package:learn_to_talk/domain/usecases/get_languages_usecase.dart';
-import 'package:learn_to_talk/domain/usecases/translation_usecase.dart';
 import 'package:learn_to_talk/presentation/blocs/language/language_event.dart';
 import 'package:learn_to_talk/presentation/blocs/language/language_state.dart';
 import 'package:logging/logging.dart';
 
 class LanguageBloc extends Bloc<LanguageEvent, LanguageState> {
   final GetLanguagesUseCase _getLanguagesUseCase;
-  final TranslationUseCase _translationUseCase;
   final LanguagePreferencesService _languagePreferencesService;
   final Logger _logger = Logger('LanguageBloc');
 
   LanguageBloc({
     required GetLanguagesUseCase getLanguagesUseCase,
-    required TranslationUseCase translationUseCase,
     required LanguagePreferencesService languagePreferencesService,
   })  : _getLanguagesUseCase = getLanguagesUseCase,
-        _translationUseCase = translationUseCase,
         _languagePreferencesService = languagePreferencesService,
         super(const LanguageState()) {
     // Register event handlers
@@ -25,7 +21,6 @@ class LanguageBloc extends Bloc<LanguageEvent, LanguageState> {
     on<SelectSourceLanguage>(_onSelectSourceLanguage);
     on<SelectTargetLanguage>(_onSelectTargetLanguage);
     on<CheckOfflineAvailability>(_onCheckOfflineAvailability);
-    on<DownloadLanguageModels>(_onDownloadLanguageModels);
     on<SwapLanguages>(_onSwapLanguages);
     
     // Register persistence event handlers
@@ -137,43 +132,7 @@ class LanguageBloc extends Bloc<LanguageEvent, LanguageState> {
     }
   }
 
-  void _onDownloadLanguageModels(
-    DownloadLanguageModels event,
-    Emitter<LanguageState> emit,
-  ) async {
-    emit(state.copyWith(
-      status: LanguageStatus.loading,
-      offlineStatus: OfflineStatus.downloading,
-    ));
-
-    try {
-      // Using the actual method name from TranslationUseCase
-      await _translationUseCase.downloadModel(
-        event.sourceLanguageCode,
-        event.targetLanguageCode,
-      );
-
-      // Using the correct method name to check if models are available
-      final isAvailableOffline = await _getLanguagesUseCase.areModelsAvailableOffline(
-        event.sourceLanguageCode,
-        event.targetLanguageCode,
-      );
-
-      emit(state.copyWith(
-        status: LanguageStatus.loaded,
-        offlineStatus: isAvailableOffline
-            ? OfflineStatus.available
-            : OfflineStatus.unavailable,
-      ));
-    } catch (e) {
-      _logger.severe('Error downloading language models: $e');
-      _logger.info('Source: ${event.sourceLanguageCode}, Target: ${event.targetLanguageCode}');
-      emit(state.copyWith(
-        status: LanguageStatus.error,
-        errorMessage: 'Failed to download language models: $e',
-      ));
-    }
-  }
+  // Download functionality is now handled by ModelDownloadWidget and ModelDownloadService
 
   void _onSwapLanguages(
     SwapLanguages event,

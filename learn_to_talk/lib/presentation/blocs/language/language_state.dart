@@ -11,6 +11,7 @@ class LanguageState extends Equatable {
   final Language? targetLanguage;
   final OfflineStatus offlineStatus;
   final String? errorMessage;
+  final String? downloadProgress; // Track download progress information
 
   const LanguageState({
     this.status = LanguageStatus.initial,
@@ -19,6 +20,7 @@ class LanguageState extends Equatable {
     this.targetLanguage,
     this.offlineStatus = OfflineStatus.unknown,
     this.errorMessage,
+    this.downloadProgress,
   });
 
   LanguageState copyWith({
@@ -31,6 +33,8 @@ class LanguageState extends Equatable {
     OfflineStatus? offlineStatus,
     String? errorMessage,
     bool clearErrorMessage = false,
+    String? downloadProgress,
+    bool clearDownloadProgress = false,
   }) {
     return LanguageState(
       status: status ?? this.status,
@@ -39,6 +43,7 @@ class LanguageState extends Equatable {
       targetLanguage: clearTargetLanguage ? null : targetLanguage ?? this.targetLanguage,
       offlineStatus: offlineStatus ?? this.offlineStatus,
       errorMessage: clearErrorMessage ? null : errorMessage ?? this.errorMessage,
+      downloadProgress: clearDownloadProgress ? null : downloadProgress ?? this.downloadProgress,
     );
   }
 
@@ -52,5 +57,6 @@ class LanguageState extends Equatable {
         targetLanguage,
         offlineStatus,
         errorMessage,
+        downloadProgress,
       ];
 }

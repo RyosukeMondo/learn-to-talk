@@ -43,18 +43,7 @@ class CheckOfflineAvailability extends LanguageEvent {
   List<Object> get props => [sourceLanguageCode, targetLanguageCode];
 }
 
-class DownloadLanguageModels extends LanguageEvent {
-  final String sourceLanguageCode;
-  final String targetLanguageCode;
-
-  const DownloadLanguageModels({
-    required this.sourceLanguageCode,
-    required this.targetLanguageCode,
-  });
-
-  @override
-  List<Object> get props => [sourceLanguageCode, targetLanguageCode];
-}
+// Download functionality is now handled by ModelDownloadWidget and ModelDownloadService
 
 class SwapLanguages extends LanguageEvent {
   const SwapLanguages();

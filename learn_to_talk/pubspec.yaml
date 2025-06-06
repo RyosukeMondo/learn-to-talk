@@ -43,6 +43,9 @@ dependencies:
   # Logging
   logging: ^1.2.0
   audioplayers: ^6.4.0
+  # Network and Performance
+  connectivity_plus: ^5.0.2
+  firebase_performance: ^0.9.3+13
 
 dev_dependencies:
   flutter_test:
