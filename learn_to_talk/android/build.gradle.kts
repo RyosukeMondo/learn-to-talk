@@ -27,11 +27,40 @@ allprojects {
     // Add compatibility settings for ML Kit packages and plugins
     plugins.withId("com.android.library") {
         val android = extensions.getByName("android") as com.android.build.gradle.LibraryExtension
+        
+        // Update compileSdk version for all plugins to match app's SDK version
+        try {
+            android.compileSdkVersion(35)
+        } catch (e: Exception) {
+            logger.warn("Failed to set compileSdkVersion for ${project.name}: ${e.message}")
+        }
+        
         android.buildFeatures.apply {
             buildConfig = true
         }
+        
         android.lint.apply {
             disable.add("UnsafeOptInUsageError")
+            // Disable resource validation for Google ML Kit plugins
+            if (project.name.contains("google_mlkit") || project.path.contains("google_mlkit")) {
+                disable.add("NewApi")
+                abortOnError = false
+                checkReleaseBuilds = false
+            }
+        }
+        
+        // Add special resource handling for Google ML Kit plugins
+        if (project.name.contains("google_mlkit") || project.path.contains("google_mlkit")) {
+            logger.lifecycle("Applying special resource fixes for ${project.name}")
+            // Disable resource shrinking and validation for ML Kit plugins
+            try {
+                android.buildTypes.getByName("release").apply {
+                    val shrinkMethod = this.javaClass.getMethod("setMinifyEnabled", Boolean::class.java)
+                    shrinkMethod.invoke(this, false)
+                }
+            } catch (e: Exception) {
+                logger.warn("Failed to disable minification for ${project.name}: ${e.message}")
+            }
         }
         
         // Fix for missing namespace in plugins

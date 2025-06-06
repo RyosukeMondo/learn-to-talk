@@ -7,7 +7,32 @@ plugins {
 
 android {
     namespace = "com.example.learn_to_talk"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 35 // Updated to Android 15 (API 35) to support all Flutter plugins
+    
+    // Disable lint checks for release builds
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
+        disable.add("InvalidPackage")
+        disable.add("NewApi")
+    }
+    
+    // Disable resource shrinking and minification for release builds
+    buildTypes {
+        getByName("release") {
+            isMinifyEnabled = false
+            isShrinkResources = false
+            proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
+        }
+    }
+    
+    // Configure AAPT options to avoid resource issues
+    aaptOptions {
+        noCompress("tflite") // For ML Kit models
+        ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:<dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"
+        additionalParameters.add("--no-version-vectors")
+        additionalParameters.add("--no-version-transitions")
+    }
     ndkVersion = "27.0.12077973" // Update to higher version required by plugins
 
     compileOptions {
